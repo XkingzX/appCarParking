@@ -1,15 +1,20 @@
 import 'package:get/get.dart';
-import 'package:flutter/material.dart';
+import '../features/auth/presentation/login_page.dart';
+import '../features/auth/presentation/register_page.dart';
 
 class AppPages {
-  static const INITIAL = '/';
+  static const INITIAL = '/login';
 
   static final routes = [
     GetPage(
-      name: '/',
-      page: () => const Scaffold(
-        body: Center(child: Text('Smart Parking App - Splash/Auth here')),
-      ),
+      name: '/login',
+      page: () => const LoginPage(),
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: '/register',
+      page: () => const RegisterPage(),
+      transition: Transition.rightToLeft,
     ),
   ];
 }

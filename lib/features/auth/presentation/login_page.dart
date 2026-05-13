@@ -17,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   // Khai báo controller ở cấp độ class
   late final TextEditingController emailController;
   late final TextEditingController passwordController;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -159,12 +160,19 @@ class _LoginPageState extends State<LoginPage> {
                           // Password Field
                           TextField(
                             controller: passwordController,
-                            obscureText: true,
-                            decoration: const InputDecoration(
+                            obscureText: _obscurePassword,
+                            decoration: InputDecoration(
                               labelText: 'Mật khẩu',
-                              prefixIcon: Icon(Icons.lock_outline_rounded),
-                              suffixIcon: Icon(Icons.visibility_off_outlined),
-                              border: OutlineInputBorder(
+                              prefixIcon: const Icon(Icons.lock_outline_rounded),
+                              suffixIcon: IconButton(
+                                icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
+                              border: const OutlineInputBorder(
                                 borderRadius: BorderRadius.all(Radius.circular(12)),
                               ),
                             ),
@@ -274,70 +282,12 @@ class _LoginPageState extends State<LoginPage> {
                     ),
 
                     const SizedBox(height: 32),
-
-                    // Test area footer
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text(
-                            '-- Developer Test Access --',
-                            style: TextStyle(color: AppTheme.textLight, fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _buildTestBtn(Icons.person, 'Customer', () {
-                                debugPrint('🧪 [TEST MODE] Đăng nhập với tài khoản Customer mẫu');
-                                emailController.text = 'customer@test.com';
-                                passwordController.text = '123456';
-                                context.read<AuthBloc>().add(
-                                    LoginEvent(
-                                        email: 'customer@test.com',
-                                        password: '123456'
-                                    )
-                                );
-                              }),
-                              _buildTestBtn(Icons.security, 'Guard', () {
-                                debugPrint('🧪 [TEST MODE] Đăng nhập với tài khoản Guard mẫu');
-                                emailController.text = 'guard@test.com';
-                                passwordController.text = '123456';
-                                context.read<AuthBloc>().add(
-                                    LoginEvent(
-                                        email: 'guard@test.com',
-                                        password: '123456'
-                                    )
-                                );
-                              }),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTestBtn(IconData icon, String label, VoidCallback onTap) {
-    return TextButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18, color: AppTheme.primaryBlue),
-      label: Text(label, style: const TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold)),
-      style: TextButton.styleFrom(
-        backgroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

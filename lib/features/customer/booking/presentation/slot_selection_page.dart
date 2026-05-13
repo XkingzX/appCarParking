@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:lottie/lottie.dart';
+import 'package:baidoxe/core/theme.dart';
 import 'payment_page.dart';
 
 class SlotSelectionPage extends StatefulWidget {
-  const SlotSelectionPage({Key? key}) : super(key: key);
+  final Map<String, dynamic> parkingLot;
+  final Map<String, dynamic> selectedPricing;
+
+  const SlotSelectionPage({
+    Key? key,
+    required this.parkingLot,
+    required this.selectedPricing,
+  }) : super(key: key);
 
   @override
   State<SlotSelectionPage> createState() => _SlotSelectionPageState();
@@ -12,109 +19,148 @@ class SlotSelectionPage extends StatefulWidget {
 
 class _SlotSelectionPageState extends State<SlotSelectionPage> {
   int? selectedSlot;
+  int _totalRows = 8; // 16 slots initially
+  bool _isLoading = false;
+  final ScrollController _scrollController = ScrollController();
+
+  final List<int> _occupiedSlots = [2, 5, 8, 11, 14]; // Mock data
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 50) {
+      _loadMoreSlots();
+    }
+  }
+
+  Future<void> _loadMoreSlots() async {
+    if (_isLoading || _totalRows >= 24) return; // limit to 48 slots max for demo
+    setState(() {
+      _isLoading = true;
+    });
+    
+    // Simulate network delay
+    await Future.delayed(const Duration(seconds: 1));
+    
+    if (mounted) {
+      setState(() {
+        _totalRows += 4; // load 8 more slots
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _getSlotName(int index, bool isLeft) {
+    String prefix = isLeft ? 'A' : 'B';
+    return '$prefix${index + 1}';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.primaryWhite,
       appBar: AppBar(
-        title: const Text('Chọn chỗ đỗ xe'),
+        title: Text(widget.parkingLot['name'] ?? 'PARK ZONE'),
+        centerTitle: true,
       ),
       body: Column(
         children: [
+          // Tabs
+          _buildZoneTabs(),
+          
+          // Legends
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildLegend(Colors.white, Colors.black, 'Trống'),
-                _buildLegend(Colors.blue, Colors.white, 'Đang chọn'),
-                _buildLegend(Colors.red[100]!, Colors.red, 'Đã kín'),
+                _buildLegend(Colors.white, AppTheme.textDark, 'Trống'),
+                _buildLegend(AppTheme.accentBlue, Colors.white, 'Đang chọn'),
+                _buildLegend(Colors.grey.shade300, AppTheme.textDark, 'Đã kín', isOccupied: true),
               ],
             ),
           ),
+          
+          // Parking Layout
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 1,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-              ),
-              itemCount: 15,
-              itemBuilder: (context, index) {
-                // Mock: slots 2, 5, 8 are occupied
-                bool isOccupied = index == 2 || index == 5 || index == 8;
-                bool isSelected = selectedSlot == index;
-
-                return GestureDetector(
-                  onTap: () {
-                    if (!isOccupied) {
-                      setState(() {
-                        selectedSlot = index;
-                      });
+            child: Stack(
+              children: [
+                ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.only(bottom: 100, top: 16), // space for ENTRY text
+                  itemCount: _totalRows + 1, // +1 for loading indicator
+                  itemBuilder: (context, rowIndex) {
+                    if (rowIndex == _totalRows) {
+                      return _isLoading 
+                          ? const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          : const SizedBox(height: 40);
                     }
+                    return _buildParkingRow(rowIndex);
                   },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isOccupied
-                          ? Colors.red[100]
-                          : isSelected
-                              ? Colors.blue
-                              : Colors.white,
-                      border: Border.all(
-                        color: isOccupied ? Colors.red : Colors.grey,
+                ),
+                
+                // Entry Text sticky at bottom of list area
+                Positioned(
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
+                  child: Column(
+                    children: [
+                      Icon(Icons.keyboard_arrow_up, color: Colors.green.shade600),
+                      Text(
+                        'ENTRY',
+                        style: TextStyle(
+                          color: Colors.green.shade600,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: isOccupied
-                        ? const Icon(Icons.directions_car, color: Colors.red, size: 40)
-                        : Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              if (!isSelected)
-                                Opacity(
-                                  opacity: 0.5,
-                                  child: Lottie.network(
-                                    'https://lottie.host/80a0614f-d05e-4aab-a7eb-62aeb2c32cf8/U3y7vM8IfT.json', // Lottie pulse/radar animation
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
-                                  ),
-                                ),
-                              Text(
-                                'A${index + 1}',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : Colors.black,
-                                ),
-                              ),
-                            ],
-                          ),
+                    ],
                   ),
-                );
-              },
+                ),
+              ],
             ),
           ),
+          
+          // Bottom Book Button
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
               color: Colors.white,
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
               boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
             ),
             child: ElevatedButton(
               onPressed: selectedSlot != null
                   ? () {
-                      Get.to(() => const PaymentPage());
+                      Get.to(() => PaymentPage(
+                        parkingLot: widget.parkingLot,
+                        selectedPricing: widget.selectedPricing,
+                        selectedSlotName: _getSlotName(
+                            selectedSlot!,
+                            selectedSlot! % 2 == 0 // left is even index (0,2,4) based on logic below
+                        ),
+                      ));
                     }
                   : null,
               style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
+                minimumSize: const Size(double.infinity, 56),
+                backgroundColor: selectedSlot != null ? AppTheme.primaryBlue : Colors.grey.shade400,
               ),
-              child: const Text('Tiếp tục thanh toán', style: TextStyle(fontSize: 18)),
+              child: const Text('ĐẶT CHỖ', style: TextStyle(fontSize: 16, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -122,21 +168,187 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
     );
   }
 
-  Widget _buildLegend(Color color, Color textColor, String label) {
+  Widget _buildZoneTabs() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildTabItem('Khu A', true),
+          _buildTabItem('Khu B', false),
+          _buildTabItem('Khu C', false),
+          _buildTabItem('Khu VIP', false),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabItem(String text, bool isSelected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: isSelected ? AppTheme.accentBlue : Colors.transparent,
+            width: 3,
+          ),
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: isSelected ? AppTheme.textDark : AppTheme.textLight,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildParkingRow(int rowIndex) {
+    int leftSlotIndex = rowIndex * 2;
+    int rightSlotIndex = rowIndex * 2 + 1;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Left Slot (Row A)
+          _buildSlot(leftSlotIndex, _getSlotName(leftSlotIndex, true), isLeft: true),
+          
+          // Center Pathway
+          Container(
+            width: 80,
+            height: 60, // Match slot height roughly
+            alignment: Alignment.center,
+            child: rowIndex == 2 // Just show text in the middle somewhere
+                ? RotatedBox(
+                    quarterTurns: 3,
+                    child: Text(
+                      '4 SLOTS FREE',
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
+                : CustomPaint(
+                    size: const Size(2, 40),
+                    painter: DashedLinePainter(),
+                  ),
+          ),
+          
+          // Right Slot (Row B)
+          _buildSlot(rightSlotIndex, _getSlotName(rightSlotIndex, false), isLeft: false),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSlot(int index, String label, {required bool isLeft}) {
+    bool isOccupied = _occupiedSlots.contains(index);
+    bool isSelected = selectedSlot == index;
+
+    return GestureDetector(
+      onTap: () {
+        if (!isOccupied) {
+          setState(() {
+            selectedSlot = index;
+          });
+        }
+      },
+      child: Container(
+        width: 100,
+        height: 60,
+        decoration: BoxDecoration(
+          color: isOccupied ? Colors.grey.shade200 : (isSelected ? AppTheme.accentBlue : Colors.white),
+          border: Border.all(
+            color: isSelected ? AppTheme.accentBlue : Colors.grey.shade300,
+            width: 1.5,
+          ),
+          borderRadius: isLeft
+              ? const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  bottomLeft: Radius.circular(24),
+                  topRight: Radius.circular(4),
+                  bottomRight: Radius.circular(4),
+                )
+              : const BorderRadius.only(
+                  topRight: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                  topLeft: Radius.circular(4),
+                  bottomLeft: Radius.circular(4),
+                ),
+          boxShadow: isSelected
+              ? [BoxShadow(color: AppTheme.accentBlue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+              : null,
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (isOccupied)
+              // Car Top View
+              RotatedBox(
+                quarterTurns: isLeft ? 1 : 3, // point inwards or outwards
+                child: Icon(
+                  Icons.directions_car,
+                  color: AppTheme.primaryBlue,
+                  size: 40,
+                ),
+              )
+            else
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AppTheme.accentBlue,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegend(Color color, Color textColor, String label, {bool isOccupied = false}) {
     return Row(
       children: [
         Container(
-          width: 20,
-          height: 20,
+          width: 24,
+          height: 24,
           decoration: BoxDecoration(
             color: color,
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(6),
           ),
+          alignment: Alignment.center,
+          child: isOccupied 
+            ? Icon(Icons.directions_car, size: 16, color: AppTheme.primaryBlue)
+            : null,
         ),
         const SizedBox(width: 8),
-        Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
       ],
     );
   }
+}
+
+class DashedLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    double dashHeight = 5, dashSpace = 5, startY = 0;
+    final paint = Paint()
+      ..color = Colors.grey.shade300
+      ..strokeWidth = 2;
+    while (startY < size.height) {
+      canvas.drawLine(Offset(0, startY), Offset(0, startY + dashHeight), paint);
+      startY += dashHeight + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

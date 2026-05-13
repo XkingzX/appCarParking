@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../booking/presentation/parking_detail_page.dart';
 
 class CustomerMapPage extends StatefulWidget {
@@ -17,26 +18,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
   LatLng? _currentPosition;
   bool _isLoadingLocation = true;
 
-  final List<Map<String, dynamic>> _mockParkingLots = [
-    {
-      'name': 'Lawnfield Parks',
-      'description': '3891 Ranchview Dr. Richardson, California 62639',
-      'lat': 10.7769,
-      'lng': 106.7009,
-      'slots': 5,
-      'price': '\$6.00/hour',
-      'rating': 5.0,
-    },
-    {
-      'name': 'Vincom Center Parking',
-      'description': 'Bãi đỗ xe trong nhà tầng hầm, an ninh 24/7',
-      'lat': 10.7780,
-      'lng': 106.7020,
-      'slots': 12,
-      'price': '30.000đ/giờ',
-      'rating': 4.8,
-    },
-  ];
+  List<Map<String, dynamic>> _parkingLots = [];
 
   @override
   void initState() {
@@ -71,8 +53,20 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
     } 
 
     try {
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+      // POSITION MOCK (VŨNG TÀU) - Theo yêu cầu
+      debugPrint("--- DEBUG: Bỏ qua GPS thực tế, dùng tọa độ giả lập ---");
+      Position position = Position(
+        longitude: 107.10081371406169, 
+        latitude: 10.377059864546746, 
+        timestamp: DateTime.now(), 
+        accuracy: 1, 
+        altitude: 1, 
+        heading: 1, 
+        speed: 1, 
+        speedAccuracy: 1,
+        altitudeAccuracy: 1,
+        headingAccuracy: 1,
+      );
       
       debugPrint("--- DEBUG: Đã lấy được vị trí người dùng. Vĩ độ: ${position.latitude}, Kinh độ: ${position.longitude} ---");
       
@@ -82,11 +76,34 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
           _isLoadingLocation = false;
         });
         _mapController.move(_currentPosition!, 15.0);
+        _fetchNearbyParkingLots();
       }
     } catch (e) {
       if (mounted) {
         setState(() { _isLoadingLocation = false; });
       }
+    }
+  }
+
+  Future<void> _fetchNearbyParkingLots() async {
+    if (_currentPosition == null) return;
+    try {
+      final response = await Supabase.instance.client.rpc(
+        'get_nearby_parking_lots',
+        params: {
+          'user_lat': _currentPosition!.latitude,
+          'user_lon': _currentPosition!.longitude,
+          'max_distance_meters': 10000,
+          'limit_count': 20,
+        },
+      );
+      if (mounted && response != null) {
+        setState(() {
+          _parkingLots = List<Map<String, dynamic>>.from(response);
+        });
+      }
+    } catch (e) {
+      debugPrint('Lỗi fetch bãi đỗ từ Supabase: $e');
     }
   }
 
@@ -127,8 +144,8 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                       height: 40,
                       child: const Icon(Icons.my_location, color: Colors.blue, size: 30),
                     ),
-                  ..._mockParkingLots.map((lot) => Marker(
-                        point: LatLng(lot['lat'], lot['lng']),
+                  ..._parkingLots.map((lot) => Marker(
+                        point: LatLng(lot['latitude'], lot['longitude']),
                         width: 40,
                         height: 40,
                         child: const Icon(Icons.location_on, color: Colors.red, size: 40),
@@ -152,17 +169,84 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                   BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
                 ],
               ),
-              child: TextField(
-                onSubmitted: (value) {
-                  debugPrint("--- DEBUG: Người dùng tìm kiếm: '$value' ---");
-                  // Map search -> coordinate simulation
-                  debugPrint("--- DEBUG: Tọa độ giả định cho '$value': Vĩ độ 10.7760, Kinh độ 106.7000 ---");
+              child: Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<String>.empty();
+                  }
+                  // Lọc bãi đỗ từ danh sách hiện tại
+                  final suggestions = _parkingLots
+                      .map((lot) => lot['name'] as String?)
+                      .where((name) => name != null)
+                      .cast<String>()
+                      .where((name) => name.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                  
+                  // Các gợi ý mặc định phổ biến
+                  final defaultSuggestions = [
+                    'Lotte Mart Vũng Tàu', 
+                    'Đại học Thủ Dầu Một', 
+                    'Bãi xe trung tâm Bình Dương',
+                    'GO! Dĩ An'
+                  ].where((name) => name.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                  
+                  return {...suggestions, ...defaultSuggestions}.toList(); // Dùng Set để loại bỏ trùng lặp
                 },
-                decoration: const InputDecoration(
-                  hintText: 'Tìm bãi đỗ xe...',
-                  icon: Icon(Icons.search),
-                  border: InputBorder.none,
-                ),
+                onSelected: (String selection) {
+                  debugPrint("--- DEBUG: Người dùng chọn: '$selection' ---");
+                  try {
+                    final lot = _parkingLots.firstWhere((lot) => lot['name'] == selection);
+                    _mapController.move(LatLng(lot['latitude'], lot['longitude']), 16.0);
+                  } catch (e) {
+                    debugPrint("Không tìm thấy bãi đỗ này trong danh sách hiện tại");
+                  }
+                },
+                fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                  return TextField(
+                    controller: textEditingController,
+                    focusNode: focusNode,
+                    onSubmitted: (String value) {
+                      onFieldSubmitted();
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Tìm bãi đỗ xe... (VD: Lotte Mart)',
+                      icon: Icon(Icons.search),
+                      border: InputBorder.none,
+                    ),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(20),
+                          bottomRight: Radius.circular(20),
+                        ),
+                      ),
+                      child: Container(
+                        width: MediaQuery.of(context).size.width - 32, // Khớp với kích thước thanh tìm kiếm
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final String option = options.elementAt(index);
+                            return ListTile(
+                              leading: const Icon(Icons.location_on, color: Colors.blue),
+                              title: Text(option),
+                              onTap: () {
+                                onSelected(option);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -188,14 +272,17 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
-                itemCount: _mockParkingLots.length,
+                itemCount: _parkingLots.length,
                 itemBuilder: (context, index) {
-                  final lot = _mockParkingLots[index];
-                  final distance = _calculateDistance(lot['lat'], lot['lng']);
+                  final lot = _parkingLots[index];
+                  // Distance is returned by the RPC
+                  final distance = lot['distance_meters'] != null 
+                      ? (lot['distance_meters'] as num).toDouble() / 1000 
+                      : 0.0;
                   
                   return GestureDetector(
                     onTap: () {
-                      Get.to(() => const ParkingDetailPage());
+                      Get.to(() => ParkingDetailPage(parkingLot: lot));
                     },
                     child: Card(
                       margin: const EdgeInsets.only(right: 16),
@@ -214,7 +301,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    lot['name'],
+                                    lot['name'] ?? 'Chưa có tên',
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -223,7 +310,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                                 Row(
                                   children: [
                                     const Icon(Icons.star, color: Colors.amber, size: 18),
-                                    Text(' ${lot['rating']}'),
+                                    Text(' ${lot['avg_rating'] ?? 0}'),
                                   ],
                                 ),
                               ],
@@ -232,7 +319,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                             
                             // Dòng 2: Nội dung mô tả ngắn
                             Text(
-                              lot['description'],
+                              lot['location'] ?? 'Không có địa chỉ',
                               style: const TextStyle(color: Colors.grey, fontSize: 13),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -247,12 +334,12 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                                   children: [
                                     Icon(Icons.directions_car, size: 18, color: Colors.blue[700]),
                                     const SizedBox(width: 4),
-                                    Text('${lot['slots']} Slot', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    const Text('Xem chi tiết', style: TextStyle(fontWeight: FontWeight.w600)),
                                   ],
                                 ),
-                                Text(
-                                  lot['price'], 
-                                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)
+                                const Text(
+                                  'Từ 10.000đ', 
+                                  style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)
                                 ),
                               ],
                             ),

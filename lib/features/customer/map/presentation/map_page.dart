@@ -24,6 +24,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
   bool _isLoadingLocation = true;
   List<Map<String, dynamic>> _parkingLots = [];
   int _searchRequestId = 0;
+  List<LatLng> _routePoints = [];
 
   @override
   void initState() {
@@ -67,6 +68,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
 
       
       // MOCK POSITION (VŨNG TÀU) - Comment lại để dùng GPS thật
+
       position = Position(
         longitude: 107.10081371406169,
         latitude: 10.377059864546746,
@@ -74,6 +76,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
         accuracy: 1, altitude: 1, heading: 1, speed: 1, speedAccuracy: 1,
         altitudeAccuracy: 1, headingAccuracy: 1,
       );
+
       
 
       if (mounted) {
@@ -95,6 +98,9 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
   }
 
   Future<void> _fetchNearbyParkingLots(double lat, double lng) async {
+    setState(() {
+      _routePoints.clear();
+    });
     try {
       final response = await Supabase.instance.client.rpc(
         'get_nearby_parking_lots',
@@ -146,20 +152,20 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
     return await _searchPlaces(query);
   }
 
-  // GỌI API PHOTON (OSM) ĐỂ GỢI Ý ĐỊA ĐIỂM THÔNG MINH HƠN
+  // GỌI API NOMINATIM (OSM) ĐỂ TÌM KIẾM TOÀN QUỐC (VIỆT NAM)
   Future<List<Map<String, dynamic>>> _searchPlaces(String query) async {
     if (query.isEmpty) return [];
 
     try {
       final queryParams = {
         'q': query,
+        'format': 'json',
         'limit': '5',
-        // Thiết lập trọng tâm tìm kiếm ở Việt Nam để gõ "D" ra Đà Lạt dễ hơn
-        'lat': '16.047079', // Vĩ độ trung tâm VN (Đà Nẵng)
-        'lon': '108.206230', // Kinh độ trung tâm VN
+        'countrycodes': 'vn', // Giới hạn tìm kiếm trong lãnh thổ Việt Nam
+        'addressdetails': '1',
       };
 
-      final url = Uri.https('photon.komoot.io', '/api', queryParams);
+      final url = Uri.https('nominatim.openstreetmap.org', '/search', queryParams);
 
       debugPrint("=== API REQUEST: Đang gọi URL: $url ===");
 
@@ -175,29 +181,15 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
       debugPrint("=== API RESPONSE STATUS: ${response.statusCode} ===");
 
       if (response.statusCode == 200) {
-        // Photon trả về định dạng GeoJSON
-        final Map<String, dynamic> data = json.decode(response.body);
-        final List features = data['features'] ?? [];
-        debugPrint("=== API KẾT QUẢ: Tìm thấy ${features.length} địa điểm ===");
+        final List data = json.decode(response.body);
+        debugPrint("=== API KẾT QUẢ: Tìm thấy ${data.length} địa điểm ===");
 
-        return features.map((e) {
-          final properties = e['properties'];
-          final geometry = e['geometry'];
-          final coords = geometry['coordinates']; // [lon, lat]
-
-          final name = properties['name'] ?? '';
-          final city = properties['city'] ?? properties['state'] ?? '';
-          final street = properties['street'] ?? '';
-          
-          String displayName = name;
-          if (street.isNotEmpty && street != name) displayName += ', $street';
-          if (city.isNotEmpty && city != name) displayName += ', $city';
-          if (displayName.isEmpty) displayName = 'Địa điểm không xác định';
-
+        return data.map((e) {
+          final displayName = e['display_name'] ?? 'Địa điểm không xác định';
           return {
             'display_name': displayName,
-            'lat': (coords[1] as num).toDouble(), // lat
-            'lon': (coords[0] as num).toDouble(), // lon
+            'lat': double.parse(e['lat'].toString()),
+            'lon': double.parse(e['lon'].toString()),
           };
         }).toList();
       } else {
@@ -218,6 +210,40 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
           lat,
           lng,
         ) / 1000;
+  }
+
+  Future<void> _drawRouteTo(Map<String, dynamic> destination) async {
+    final startLat = (_searchedPosition ?? _currentPosition)?.latitude;
+    final startLon = (_searchedPosition ?? _currentPosition)?.longitude;
+    final destLat = destination['latitude'];
+    final destLon = destination['longitude'];
+
+    if (startLat == null || startLon == null || destLat == null || destLon == null) return;
+
+    final url = Uri.parse('http://router.project-osrm.org/route/v1/driving/$startLon,$startLat;$destLon,$destLat?geometries=geojson');
+    
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final routes = data['routes'];
+        if (routes != null && routes.isNotEmpty) {
+          final geometry = routes[0]['geometry'];
+          final coordinates = geometry['coordinates'] as List;
+          
+          if (mounted) {
+            setState(() {
+              _routePoints = coordinates.map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble())).toList();
+            });
+          }
+        }
+      } else {
+        Get.snackbar('Lỗi', 'Không thể tải đường đi từ hệ thống', snackPosition: SnackPosition.TOP);
+      }
+    } catch (e) {
+      debugPrint('Error routing: $e');
+      Get.snackbar('Lỗi', 'Không thể lấy dữ liệu chỉ đường', snackPosition: SnackPosition.TOP);
+    }
   }
 
   @override
@@ -264,6 +290,16 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                         height: 40,
                         child: const Icon(Icons.location_on, color: Colors.red, size: 40),
                       )),
+                ],
+              ),
+              PolylineLayer(
+                polylines: [
+                  if (_routePoints.isNotEmpty)
+                    Polyline(
+                      points: _routePoints,
+                      strokeWidth: 6.0,
+                      color: Colors.blueAccent,
+                    ),
                 ],
               ),
             ],
@@ -398,8 +434,14 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                         : 0.0;
 
                     return GestureDetector(
-                      onTap: () {
-                        Get.to(() => ParkingDetailPage(parkingLot: lot));
+                      onTap: () async {
+                        final result = await Get.to(() => ParkingDetailPage(
+                          parkingLot: lot,
+                          userPosition: _searchedPosition ?? _currentPosition,
+                        ));
+                        if (result != null && result['action'] == 'route') {
+                          _drawRouteTo(result['destination']);
+                        }
                       },
                       child: Card(
                         margin: const EdgeInsets.only(right: 16),

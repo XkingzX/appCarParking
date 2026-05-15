@@ -25,6 +25,10 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
   List<Map<String, dynamic>> _parkingLots = [];
   int _searchRequestId = 0;
   List<LatLng> _routePoints = [];
+  bool _isDirectionsMode = false;
+  Map<String, dynamic>? _destinationLot;
+  String _originType = 'current';
+  bool _showOriginDropdown = false;
 
   @override
   void initState() {
@@ -100,6 +104,8 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
   Future<void> _fetchNearbyParkingLots(double lat, double lng) async {
     setState(() {
       _routePoints.clear();
+      _isDirectionsMode = false;
+      _destinationLot = null;
     });
     try {
       final response = await Supabase.instance.client.rpc(
@@ -152,20 +158,20 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
     return await _searchPlaces(query);
   }
 
-  // GỌI API NOMINATIM (OSM) ĐỂ TÌM KIẾM TOÀN QUỐC (VIỆT NAM)
+  // GỌI API PHOTON (OSM) ĐỂ GỢI Ý ĐỊA ĐIỂM THÔNG MINH HƠN
   Future<List<Map<String, dynamic>>> _searchPlaces(String query) async {
     if (query.isEmpty) return [];
 
     try {
       final queryParams = {
         'q': query,
-        'format': 'json',
         'limit': '5',
-        'countrycodes': 'vn', // Giới hạn tìm kiếm trong lãnh thổ Việt Nam
-        'addressdetails': '1',
+        // Bounding box bao trọn lãnh thổ Việt Nam (Tây, Nam, Đông, Bắc)
+        // Giúp Photon tìm kiếm trên toàn quốc mà không bị dính vào 1 tỉnh cụ thể
+        'bbox': '102.14,8.18,109.46,23.39',
       };
 
-      final url = Uri.https('nominatim.openstreetmap.org', '/search', queryParams);
+      final url = Uri.https('photon.komoot.io', '/api', queryParams);
 
       debugPrint("=== API REQUEST: Đang gọi URL: $url ===");
 
@@ -181,15 +187,29 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
       debugPrint("=== API RESPONSE STATUS: ${response.statusCode} ===");
 
       if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
-        debugPrint("=== API KẾT QUẢ: Tìm thấy ${data.length} địa điểm ===");
+        // Photon trả về định dạng GeoJSON
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List features = data['features'] ?? [];
+        debugPrint("=== API KẾT QUẢ: Tìm thấy ${features.length} địa điểm ===");
 
-        return data.map((e) {
-          final displayName = e['display_name'] ?? 'Địa điểm không xác định';
+        return features.map((e) {
+          final properties = e['properties'];
+          final geometry = e['geometry'];
+          final coords = geometry['coordinates']; // [lon, lat]
+
+          final name = properties['name'] ?? '';
+          final city = properties['city'] ?? properties['state'] ?? '';
+          final street = properties['street'] ?? '';
+          
+          String displayName = name;
+          if (street.isNotEmpty && street != name) displayName += ', $street';
+          if (city.isNotEmpty && city != name) displayName += ', $city';
+          if (displayName.isEmpty) displayName = 'Địa điểm không xác định';
+
           return {
             'display_name': displayName,
-            'lat': double.parse(e['lat'].toString()),
-            'lon': double.parse(e['lon'].toString()),
+            'lat': (coords[1] as num).toDouble(), // lat
+            'lon': (coords[0] as num).toDouble(), // lon
           };
         }).toList();
       } else {
@@ -213,8 +233,13 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
   }
 
   Future<void> _drawRouteTo(Map<String, dynamic> destination) async {
-    final startLat = (_searchedPosition ?? _currentPosition)?.latitude;
-    final startLon = (_searchedPosition ?? _currentPosition)?.longitude;
+    _destinationLot = destination;
+    final startLatLng = _originType == 'searched' && _searchedPosition != null 
+        ? _searchedPosition 
+        : _currentPosition;
+        
+    final startLat = startLatLng?.latitude;
+    final startLon = startLatLng?.longitude;
     final destLat = destination['latitude'];
     final destLon = destination['longitude'];
 
@@ -244,6 +269,160 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
       debugPrint('Error routing: $e');
       Get.snackbar('Lỗi', 'Không thể lấy dữ liệu chỉ đường', snackPosition: SnackPosition.TOP);
     }
+  }
+
+  Widget _buildDirectionsPanel() {
+    return Container(
+      key: const ValueKey('DirectionsPanel'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  setState(() {
+                    _isDirectionsMode = false;
+                  });
+                },
+              ),
+              const Expanded(
+                child: Text(
+                  'Chỉ đường lái xe',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 48),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Column(
+                children: [
+                  const Icon(Icons.radio_button_checked, color: Colors.blue, size: 20),
+                  Container(height: 24, width: 2, color: Colors.grey.shade300, margin: const EdgeInsets.symmetric(vertical: 4)),
+                  const Icon(Icons.location_on, color: Colors.red, size: 24),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        if (_searchedPosition != null && _currentPosition != null) {
+                          setState(() {
+                            _showOriginDropdown = !_showOriginDropdown;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: (_searchedPosition != null && _currentPosition != null) 
+                              ? Colors.white 
+                              : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: (_searchedPosition != null && _currentPosition != null)
+                                ? Colors.blue.shade300
+                                : Colors.grey.shade300,
+                            width: (_searchedPosition != null && _currentPosition != null) ? 1.5 : 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _originType == 'current' ? 'Vị trí hiện tại của bạn' : 'Điểm vừa tìm kiếm',
+                                style: const TextStyle(fontSize: 15, color: Colors.black87),
+                              ),
+                            ),
+                            if (_searchedPosition != null && _currentPosition != null)
+                              Icon(_showOriginDropdown ? Icons.arrow_drop_up : Icons.arrow_drop_down, color: Colors.grey),
+                          ],
+                        ),
+                      ),
+                    ),
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      child: _showOriginDropdown
+                          ? Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade300),
+                                boxShadow: const [
+                                  BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                  ListTile(
+                                    dense: true,
+                                    leading: const Icon(Icons.my_location, color: Colors.blue),
+                                    title: const Text('Vị trí hiện tại', style: TextStyle(fontSize: 14)),
+                                    onTap: () {
+                                      setState(() {
+                                        _originType = 'current';
+                                        _showOriginDropdown = false;
+                                      });
+                                      if (_destinationLot != null) _drawRouteTo(_destinationLot!);
+                                    },
+                                  ),
+                                  const Divider(height: 1),
+                                  ListTile(
+                                    dense: true,
+                                    leading: const Icon(Icons.place, color: Colors.green),
+                                    title: const Text('Điểm đang tìm kiếm', style: TextStyle(fontSize: 14)),
+                                    onTap: () {
+                                      setState(() {
+                                        _originType = 'searched';
+                                        _showOriginDropdown = false;
+                                      });
+                                      if (_destinationLot != null) _drawRouteTo(_destinationLot!);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Text(
+                        _destinationLot?['name'] ?? 'Bãi đỗ xe',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -310,97 +489,124 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
             top: 50,
             left: 16,
             right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
-                ],
-              ),
-              child: Autocomplete<Map<String, dynamic>>(
-                optionsBuilder: (TextEditingValue textEditingValue) async {
-                  return await _debouncedSearch(textEditingValue.text);
-                },
-                displayStringForOption: (option) => option['display_name'],
-                onSelected: (Map<String, dynamic> selection) {
-                  FocusScope.of(context).unfocus(); // Đóng bàn phím
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return SizeTransition(
+                  sizeFactor: animation,
+                  axisAlignment: -1.0,
+                  child: FadeTransition(opacity: animation, child: child),
+                );
+              },
+              child: _isDirectionsMode
+                  ? _buildDirectionsPanel()
+                  : Container(
+                      key: const ValueKey('SearchBar'),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
+                        ],
+                      ),
+                      child: Autocomplete<Map<String, dynamic>>(
+                        optionsBuilder: (TextEditingValue textEditingValue) async {
+                          return await _debouncedSearch(textEditingValue.text);
+                        },
+                        displayStringForOption: (option) => option['display_name'],
+                        onSelected: (Map<String, dynamic> selection) {
+                          FocusScope.of(context).unfocus(); // Đóng bàn phím
 
-                  final lat = selection['lat'];
-                  final lon = selection['lon'];
-                  final newPos = LatLng(lat, lon);
+                          final lat = selection['lat'];
+                          final lon = selection['lon'];
+                          final newPos = LatLng(lat, lon);
 
-                  setState(() {
-                    _searchedPosition = newPos;
-                  });
+                          setState(() {
+                            _searchedPosition = newPos;
+                            _originType = 'searched'; // Mặc định chuyển sang searched
+                          });
 
-                  // Chuyển map đến vị trí search, zoom out để thấy bán kính 20km
-                  _mapController.move(newPos, 12.0);
+                          // Chuyển map đến vị trí search, zoom out để thấy bán kính 20km
+                          _mapController.move(newPos, 12.0);
 
-                  // Lấy bãi đỗ xe XUNG QUANH điểm vừa search
-                  _fetchNearbyParkingLots(lat, lon);
-                },
-                fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-                  return TextField(
-                    controller: textEditingController,
-                    focusNode: focusNode,
-                    onSubmitted: (String value) {
-                      onFieldSubmitted();
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Tìm địa điểm... (VD: Hà Nội)',
-                      prefixIcon: IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: () {
-                          // Force submit when clicking search icon
-                          onFieldSubmitted();
+                          // Lấy bãi đỗ xe XUNG QUANH điểm vừa search
+                          _fetchNearbyParkingLots(lat, lon);
+                        },
+                        fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                          return TextField(
+                            controller: textEditingController,
+                            focusNode: focusNode,
+                            onSubmitted: (String value) {
+                              onFieldSubmitted();
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Tìm địa điểm... (VD: Hà Nội)',
+                              prefixIcon: IconButton(
+                                icon: const Icon(Icons.search),
+                                onPressed: () {
+                                  onFieldSubmitted();
+                                },
+                              ),
+                              suffixIcon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (_routePoints.isNotEmpty)
+                                    IconButton(
+                                      icon: const Icon(Icons.menu, color: Colors.blue),
+                                      onPressed: () {
+                                        setState(() {
+                                          _isDirectionsMode = true;
+                                        });
+                                      },
+                                    ),
+                                  IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      textEditingController.clear();
+                                    },
+                                  ),
+                                ],
+                              ),
+                              border: InputBorder.none,
+                            ),
+                          );
+                        },
+                        optionsViewBuilder: (context, onSelected, options) {
+                          return Align(
+                            alignment: Alignment.topLeft,
+                            child: Material(
+                              elevation: 4.0,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(20),
+                                  bottomRight: Radius.circular(20),
+                                ),
+                              ),
+                              child: Container(
+                                width: MediaQuery.of(context).size.width - 32,
+                                constraints: const BoxConstraints(maxHeight: 250),
+                                child: ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (BuildContext context, int index) {
+                                    final option = options.elementAt(index);
+                                    return ListTile(
+                                      leading: const Icon(Icons.place, color: Colors.green),
+                                      title: Text(option['display_name'], maxLines: 2, overflow: TextOverflow.ellipsis),
+                                      onTap: () {
+                                        onSelected(option);
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          );
                         },
                       ),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          textEditingController.clear();
-                        },
-                      ),
-                      border: InputBorder.none,
                     ),
-                  );
-                },
-                optionsViewBuilder: (context, onSelected, options) {
-                  return Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      elevation: 4.0,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(20),
-                          bottomRight: Radius.circular(20),
-                        ),
-                      ),
-                      child: Container(
-                        width: MediaQuery.of(context).size.width - 32,
-                        constraints: const BoxConstraints(maxHeight: 250),
-                        child: ListView.builder(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          itemCount: options.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            final option = options.elementAt(index);
-                            return ListTile(
-                              leading: const Icon(Icons.place, color: Colors.green),
-                              title: Text(option['display_name'], maxLines: 2, overflow: TextOverflow.ellipsis),
-                              onTap: () {
-                                onSelected(option);
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
             ),
           ),
 

@@ -29,6 +29,8 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
   Map<String, dynamic>? _destinationLot;
   String _originType = 'current';
   bool _showOriginDropdown = false;
+  double? _routeDistanceKm;
+  int? _routeDurationMin;
 
   @override
   void initState() {
@@ -106,6 +108,8 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
       _routePoints.clear();
       _isDirectionsMode = false;
       _destinationLot = null;
+      _routeDistanceKm = null;
+      _routeDurationMin = null;
     });
     try {
       final response = await Supabase.instance.client.rpc(
@@ -122,6 +126,8 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
         setState(() {
           _parkingLots = List<Map<String, dynamic>>.from(response);
         });
+        
+        _updateExactDistances();
 
         // XỬ LÝ LOGIC: NẾU KHÔNG CÓ BÃI ĐỖ SAU KHI SEARCH
         if (_parkingLots.isEmpty && _searchedPosition != null) {
@@ -137,6 +143,47 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
       }
     } catch (e) {
       debugPrint('Lỗi fetch bãi đỗ từ Supabase: $e');
+    }
+  }
+
+  Future<void> _updateExactDistances() async {
+    final startLatLng = _originType == 'searched' && _searchedPosition != null 
+        ? _searchedPosition 
+        : _currentPosition;
+    
+    if (startLatLng == null) return;
+    final startLat = startLatLng.latitude;
+    final startLon = startLatLng.longitude;
+
+    for (int i = 0; i < _parkingLots.length; i++) {
+      if (!mounted) break;
+      final lot = _parkingLots[i];
+      final destLat = lot['latitude'];
+      final destLon = lot['longitude'];
+      
+      if (destLat == null || destLon == null) continue;
+
+      final url = Uri.parse('http://router.project-osrm.org/route/v1/driving/$startLon,$startLat;$destLon,$destLat?overview=false');
+      try {
+        final response = await http.get(url);
+        if (response.statusCode == 200) {
+           final data = json.decode(response.body);
+           final routes = data['routes'];
+           if (routes != null && routes.isNotEmpty) {
+             final distance = routes[0]['distance'];
+             if (mounted) {
+               setState(() {
+                 _parkingLots[i] = {
+                   ..._parkingLots[i],
+                   'exact_distance_km': distance / 1000.0,
+                 };
+               });
+             }
+           }
+        }
+      } catch (e) {
+        debugPrint('Error updating exact distance: $e');
+      }
     }
   }
 
@@ -256,9 +303,18 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
           final geometry = routes[0]['geometry'];
           final coordinates = geometry['coordinates'] as List;
           
+          final distanceMeters = routes[0]['distance'] as num?;
+          final durationSeconds = routes[0]['duration'] as num?;
+          
           if (mounted) {
             setState(() {
               _routePoints = coordinates.map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble())).toList();
+              if (distanceMeters != null) {
+                _routeDistanceKm = distanceMeters.toDouble() / 1000.0;
+              }
+              if (durationSeconds != null) {
+                _routeDurationMin = (durationSeconds.toDouble() / 60.0).round();
+              }
             });
           }
         }
@@ -381,6 +437,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                                         _showOriginDropdown = false;
                                       });
                                       if (_destinationLot != null) _drawRouteTo(_destinationLot!);
+                                      _updateExactDistances();
                                     },
                                   ),
                                   const Divider(height: 1),
@@ -394,6 +451,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                                         _showOriginDropdown = false;
                                       });
                                       if (_destinationLot != null) _drawRouteTo(_destinationLot!);
+                                      _updateExactDistances();
                                     },
                                   ),
                                 ],
@@ -635,9 +693,10 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                   itemCount: _parkingLots.length,
                   itemBuilder: (context, index) {
                     final lot = _parkingLots[index];
-                    final distance = lot['distance_meters'] != null
+                    final distance = lot['exact_distance_km'] ?? (lot['distance_meters'] != null
                         ? (lot['distance_meters'] as num).toDouble() / 1000
-                        : 0.0;
+                        : 0.0);
+                    final originText = _originType == 'current' ? 'từ vị trí của bạn' : 'từ điểm đang xem';
 
                     return GestureDetector(
                       onTap: () async {
@@ -714,7 +773,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                                       const Icon(Icons.route, size: 18, color: Colors.orange),
                                       const SizedBox(width: 4),
                                       Text(
-                                        '${distance.toStringAsFixed(1)} km từ vị trí đang xem',
+                                        '${distance.toStringAsFixed(1)} km $originText',
                                         style: const TextStyle(color: Colors.blueGrey, fontSize: 13)
                                       ),
                                     ],
@@ -742,11 +801,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                 backgroundColor: Colors.white,
                 child: const Icon(Icons.my_location, color: Colors.blue),
                 onPressed: () {
-                  setState(() {
-                    _searchedPosition = null;
-                  });
                   _mapController.move(_currentPosition!, 15.0);
-                  _fetchNearbyParkingLots(_currentPosition!.latitude, _currentPosition!.longitude);
                 },
               ),
             ),

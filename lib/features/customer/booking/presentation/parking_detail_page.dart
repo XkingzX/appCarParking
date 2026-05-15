@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:baidoxe/core/theme.dart';
 import 'slot_selection_page.dart';
 
 class ParkingDetailPage extends StatefulWidget {
   final Map<String, dynamic> parkingLot;
+  final LatLng? userPosition;
   
-  const ParkingDetailPage({Key? key, required this.parkingLot}) : super(key: key);
+  const ParkingDetailPage({Key? key, required this.parkingLot, this.userPosition}) : super(key: key);
 
   @override
   State<ParkingDetailPage> createState() => _ParkingDetailPageState();
 }
 
 class _ParkingDetailPageState extends State<ParkingDetailPage> {
-  int _selectedPriceIndex = 0;
+  Map<String, dynamic>? _selectedPricing;
   final PageController _pageController = PageController();
 
-  // Hình ảnh giả lập theo yêu cầu
   final List<String> _images = [
     'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?q=80&w=1000&auto=format&fit=crop',
     'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?q=80&w=1000&auto=format&fit=crop',
@@ -27,10 +30,99 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
   List<Map<String, dynamic>> _pricingList = [];
   bool _isLoadingPrices = true;
 
+  // Duration selector state
+  bool _isDurationPanelExpanded = false;
+  String _selectedDurationType = 'Giờ';
+  int _selectedHours = 1;
+  DateTime _startDate = DateTime.now();
+  int _basePrice = 20000;
+
+  final List<String> _durationTypes = ['Giờ', 'Qua đêm', 'Cả ngày', 'Tuần', 'Tháng'];
+
+  DateTime _calculateEndDate() {
+    switch (_selectedDurationType) {
+      case 'Cả ngày': return _startDate.add(const Duration(days: 1));
+      case 'Tuần': return _startDate.add(const Duration(days: 7));
+      case 'Tháng':
+        int y = _startDate.year;
+        int m = _startDate.month + 1;
+        int d = _startDate.day;
+        if (m > 12) { m = 1; y++; }
+        int lastDay = DateTime(y, m + 1, 0).day;
+        if (d > lastDay) d = lastDay;
+        return DateTime(y, m, d, _startDate.hour, _startDate.minute);
+      default: return _startDate;
+    }
+  }
+
+  int _calculateTotalPrice() {
+    switch (_selectedDurationType) {
+      case 'Giờ': return _basePrice * _selectedHours;
+      case 'Qua đêm': return _basePrice * 8;
+      case 'Cả ngày': return _basePrice * 24;
+      case 'Tuần': return _basePrice * 24 * 7;
+      case 'Tháng': return _basePrice * 24 * 30;
+      default: return _basePrice;
+    }
+  }
+
+  String _formatPrice(int price) {
+    final f = NumberFormat('#,###', 'vi_VN');
+    return '${f.format(price)}đ';
+  }
+
+  void _confirmDuration() {
+    setState(() {
+      _selectedPricing = {
+        'time': _selectedDurationType == 'Giờ' ? '$_selectedHours Giờ' : _selectedDurationType,
+        'price': _formatPrice(_calculateTotalPrice()),
+        'value': _calculateTotalPrice(),
+      };
+      _isDurationPanelExpanded = false;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _fetchPrices();
+  }
+
+  List<Map<String, dynamic>> _processPrices(List<Map<String, dynamic>> original) {
+    Map<String, dynamic>? oneHourPrice;
+    try {
+      oneHourPrice = original.firstWhere((p) => p['time'].toString().toLowerCase().contains('1 giờ'));
+    } catch (_) {
+      if (original.isNotEmpty) {
+        oneHourPrice = original[0];
+      }
+    }
+
+    if (oneHourPrice == null) {
+      return [
+        {'time': '1 Giờ', 'price': '20.000đ', 'value': 20000},
+        {'time': '2 Giờ', 'price': '40.000đ', 'value': 40000},
+        {'time': 'Qua đêm', 'price': '160.000đ', 'value': 160000},
+      ];
+    }
+
+    int baseValue = oneHourPrice['value'] as int;
+    List<Map<String, dynamic>> processed = [];
+
+    processed.add({'time': '1 Giờ', 'price': '${baseValue}đ', 'value': baseValue});
+
+    try {
+      processed.add(original.firstWhere((p) => p['time'].toString().toLowerCase().contains('2 giờ')));
+    } catch (_) {
+      processed.add({'time': '2 Giờ', 'price': '${baseValue * 2}đ', 'value': baseValue * 2});
+    }
+
+    try {
+      processed.add(original.firstWhere((p) => p['time'].toString().toLowerCase().contains('qua đêm')));
+    } catch (_) {
+      processed.add({'time': 'Qua đêm', 'price': '${baseValue * 8}đ', 'value': baseValue * 8});
+    }
+    return processed;
   }
 
   Future<void> _fetchPrices() async {
@@ -42,19 +134,18 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
       
       if (mounted) {
         setState(() {
+          List<Map<String, dynamic>> fetched = [];
           if (response.isNotEmpty) {
-            _pricingList = (response as List).map((e) => {
+            fetched = (response as List).map((e) => {
               'time': e['duration_type'],
-              'price': '${(e['price'] as num).toInt()}đ', // Format
+              'price': '${(e['price'] as num).toInt()}đ',
               'value': (e['price'] as num).toInt(),
             }).toList();
-          } else {
-            // Fallback nếu chưa chạy SQL seed
-            _pricingList = [
-              {'time': '1 Giờ', 'price': '20.000đ', 'value': 20000},
-              {'time': '2 Giờ', 'price': '35.000đ', 'value': 35000},
-              {'time': 'Qua đêm', 'price': '100.000đ', 'value': 100000},
-            ];
+          }
+          _pricingList = _processPrices(fetched);
+          if (_pricingList.isNotEmpty) {
+            _selectedPricing = _pricingList[0];
+            _basePrice = _pricingList[0]['value'] as int;
           }
           _isLoadingPrices = false;
         });
@@ -63,11 +154,11 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
       debugPrint('Error fetching prices: $e');
       if (mounted) {
         setState(() {
-          _pricingList = [
-            {'time': '1 Giờ', 'price': '20.000đ', 'value': 20000},
-            {'time': '2 Giờ', 'price': '35.000đ', 'value': 35000},
-            {'time': 'Qua đêm', 'price': '100.000đ', 'value': 100000},
-          ];
+          _pricingList = _processPrices([]);
+          if (_pricingList.isNotEmpty) {
+            _selectedPricing = _pricingList[0];
+            _basePrice = _pricingList[0]['value'] as int;
+          }
           _isLoadingPrices = false;
         });
       }
@@ -87,6 +178,23 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
       appBar: AppBar(
         title: Text(widget.parkingLot['name'] ?? 'Chi tiết bãi đỗ xe'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, size: 22),
+            onPressed: () {
+              final text = 'Bãi đỗ: ${widget.parkingLot['name'] ?? ''}\nĐịa chỉ: ${widget.parkingLot['location'] ?? ''}';
+              Clipboard.setData(ClipboardData(text: text));
+              Get.snackbar(
+                'Thành công', 
+                'Đã copy tên và địa chỉ bãi đỗ', 
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.black87,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 2),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -197,7 +305,17 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text('Chọn khung giờ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-                            Text('Nhấn để chọn', style: TextStyle(fontSize: 14, color: AppTheme.textLight)),
+                            GestureDetector(
+                              onTap: () async {
+                                final result = await DurationSelectionPopup.show(context, _pricingList);
+                                if (result != null) {
+                                  setState(() {
+                                    _selectedPricing = result;
+                                  });
+                                }
+                              },
+                              child: const Text('Nhấn để chọn', style: TextStyle(fontSize: 14, color: AppTheme.primaryBlue, fontWeight: FontWeight.w600)),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -205,72 +323,73 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                         _isLoadingPrices 
                         ? const Center(child: CircularProgressIndicator())
                         : SizedBox(
-                          height: 130,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _pricingList.length,
-                            itemBuilder: (context, index) {
-                              final isSelected = _selectedPriceIndex == index;
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedPriceIndex = index;
-                                  });
-                                },
-                                child: Container(
-                                  width: 110,
-                                  margin: const EdgeInsets.only(right: 12),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? AppTheme.accentBlue : Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: isSelected ? AppTheme.accentBlue : Colors.grey.shade300,
-                                      width: 2,
+                            height: 130,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _pricingList.length,
+                              itemBuilder: (context, index) {
+                                final pricing = _pricingList[index];
+                                final isSelected = _selectedPricing != null && _selectedPricing!['time'] == pricing['time'];
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedPricing = pricing;
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 110,
+                                    margin: const EdgeInsets.only(right: 12),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? AppTheme.accentBlue : Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: isSelected ? AppTheme.accentBlue : Colors.grey.shade300,
+                                        width: 2,
+                                      ),
+                                      boxShadow: isSelected
+                                          ? [
+                                              BoxShadow(
+                                                color: AppTheme.accentBlue.withOpacity(0.3),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 4),
+                                              )
+                                            ]
+                                          : null,
                                     ),
-                                    boxShadow: isSelected
-                                        ? [
-                                            BoxShadow(
-                                              color: AppTheme.accentBlue.withOpacity(0.3),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 4),
-                                            )
-                                          ]
-                                        : null,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.access_time_filled,
-                                        color: isSelected ? Colors.white : AppTheme.accentBlue,
-                                        size: 24,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        _pricingList[index]['time'],
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: isSelected ? Colors.white : AppTheme.textDark,
+                                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.access_time_filled,
+                                          color: isSelected ? Colors.white : AppTheme.accentBlue,
+                                          size: 24,
                                         ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _pricingList[index]['price'],
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: isSelected ? Colors.white70 : AppTheme.accentBlue,
-                                          fontWeight: FontWeight.w600,
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          pricing['time'],
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: isSelected ? Colors.white : AppTheme.textDark,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          pricing['price'],
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: isSelected ? Colors.white70 : AppTheme.accentBlue,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
-                        ),
                         
                         const SizedBox(height: 32),
                         
@@ -340,17 +459,40 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
               ],
             ),
             child: SafeArea(
-              child: ElevatedButton(
-                onPressed: () {
-                  Get.to(() => SlotSelectionPage(
-                    parkingLot: widget.parkingLot,
-                    selectedPricing: _pricingList[_selectedPriceIndex],
-                  ));
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 56),
-                ),
-                child: const Text('Chọn vị trí đỗ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_selectedPricing == null) {
+                        Get.snackbar('Thông báo', 'Vui lòng chọn thời gian đỗ xe', snackPosition: SnackPosition.TOP);
+                        return;
+                      }
+                      Get.to(() => SlotSelectionPage(
+                        parkingLot: widget.parkingLot,
+                        selectedPricing: _selectedPricing!,
+                      ));
+                    },
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 52),
+                      backgroundColor: AppTheme.primaryBlue,
+                    ),
+                    child: const Text('Chọn vị trí đỗ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Get.back(result: {'action': 'route', 'destination': widget.parkingLot});
+                    },
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 52),
+                      side: const BorderSide(color: AppTheme.accentBlue, width: 2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                    ),
+                    icon: const Icon(Icons.directions, color: AppTheme.accentBlue),
+                    label: const Text('Chỉ đường đến bãi đỗ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.accentBlue)),
+                  ),
+                ],
               ),
             ),
           ),

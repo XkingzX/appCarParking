@@ -20,6 +20,9 @@ class ParkingDetailPage extends StatefulWidget {
 class _ParkingDetailPageState extends State<ParkingDetailPage> {
   Map<String, dynamic>? _selectedPricing;
   final PageController _pageController = PageController();
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _durationKey = GlobalKey();
+  bool _hasAutoScrolled = false;
 
   final List<String> _images = [
     'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?q=80&w=1000&auto=format&fit=crop',
@@ -168,6 +171,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
   @override
   void dispose() {
     _pageController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -200,6 +204,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
         children: [
           Expanded(
             child: SingleChildScrollView(
+              controller: _scrollController,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -286,7 +291,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                         const SizedBox(height: 24),
                         
                         // Tiện ích
-                        const Text('Tiện ích', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                        Text(key: _durationKey, 'Tiện ích', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 12,
@@ -297,99 +302,66 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                             _buildFeatureChip(Icons.security, 'Bảo vệ'),
                           ],
                         ),
-                        
                         const SizedBox(height: 32),
                         
-                        // Bảng giá
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Chọn khung giờ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-                            GestureDetector(
-                              onTap: () async {
-                                final result = await DurationSelectionPopup.show(context, _pricingList);
-                                if (result != null) {
-                                  setState(() {
-                                    _selectedPricing = result;
-                                  });
-                                }
-                              },
-                              child: const Text('Nhấn để chọn', style: TextStyle(fontSize: 14, color: AppTheme.primaryBlue, fontWeight: FontWeight.w600)),
-                            ),
-                          ],
-                        ),
+                        // Chọn thời gian đỗ
+                        const Text('Chọn thời gian đỗ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
                         const SizedBox(height: 12),
                         
-                        _isLoadingPrices 
-                        ? const Center(child: CircularProgressIndicator())
-                        : SizedBox(
-                            height: 130,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _pricingList.length,
-                              itemBuilder: (context, index) {
-                                final pricing = _pricingList[index];
-                                final isSelected = _selectedPricing != null && _selectedPricing!['time'] == pricing['time'];
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedPricing = pricing;
-                                    });
-                                  },
-                                  child: Container(
-                                    width: 110,
-                                    margin: const EdgeInsets.only(right: 12),
-                                    decoration: BoxDecoration(
-                                      color: isSelected ? AppTheme.accentBlue : Colors.white,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: isSelected ? AppTheme.accentBlue : Colors.grey.shade300,
-                                        width: 2,
-                                      ),
-                                      boxShadow: isSelected
-                                          ? [
-                                              BoxShadow(
-                                                color: AppTheme.accentBlue.withOpacity(0.3),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 4),
-                                              )
-                                            ]
-                                          : null,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.access_time_filled,
-                                          color: isSelected ? Colors.white : AppTheme.accentBlue,
-                                          size: 24,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          pricing['time'],
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                            color: isSelected ? Colors.white : AppTheme.textDark,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          pricing['price'],
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: isSelected ? Colors.white70 : AppTheme.accentBlue,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
+                        // Summary box (tap to expand)
+                        GestureDetector(
+                          onTap: () {
+                            final willExpand = !_isDurationPanelExpanded;
+                            setState(() { _isDurationPanelExpanded = willExpand; });
+                            if (willExpand && !_hasAutoScrolled) {
+                              _hasAutoScrolled = true;
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                final ctx = _durationKey.currentContext;
+                                if (ctx != null) {
+                                  Scrollable.ensureVisible(
+                                    ctx,
+                                    duration: const Duration(milliseconds: 400),
+                                    curve: Curves.easeInOut,
+                                    alignment: 0.0,
+                                  );
+                                }
+                              });
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.accentBlue, width: 1.5),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.access_time_filled, color: AppTheme.accentBlue, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _selectedPricing != null 
+                                        ? '${_selectedPricing!['time']} — ${_selectedPricing!['price']}'
+                                        : 'Nhấn để chọn thời gian',
+                                    style: TextStyle(
+                                      fontSize: 15, fontWeight: FontWeight.w600,
+                                      color: _selectedPricing != null ? AppTheme.textDark : AppTheme.textLight,
                                     ),
                                   ),
-                                );
-                              },
+                                ),
+                                Icon(_isDurationPanelExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.grey),
+                              ],
                             ),
                           ),
+                        ),
+                        
+                        // Expandable panel
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          child: _isDurationPanelExpanded ? _buildDurationPanel() : const SizedBox.shrink(),
+                        ),
                         
                         const SizedBox(height: 32),
                         
@@ -494,6 +466,186 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDurationPanel() {
+    final dateFmt = DateFormat('dd/MM/yyyy');
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Duration type chips
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _durationTypes.map((type) {
+              final isActive = _selectedDurationType == type;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedDurationType = type;
+                    _startDate = DateTime.now();
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isActive ? AppTheme.accentBlue : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isActive ? AppTheme.accentBlue : Colors.grey.shade300),
+                  ),
+                  child: Text(
+                    type,
+                    style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600,
+                      color: isActive ? Colors.white : AppTheme.textDark,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+
+          // Dynamic sub-panel
+          if (_selectedDurationType == 'Giờ') ...[
+            const Text('Chọn số giờ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textDark)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: 12,
+                itemBuilder: (ctx, i) {
+                  final h = i + 1;
+                  final isActive = _selectedHours == h;
+                  return GestureDetector(
+                    onTap: () => setState(() { _selectedHours = h; }),
+                    child: Container(
+                      width: 44, height: 44,
+                      margin: const EdgeInsets.only(right: 8),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isActive ? AppTheme.accentBlue : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: isActive ? AppTheme.accentBlue : Colors.grey.shade300),
+                      ),
+                      child: Text('$h', style: TextStyle(fontWeight: FontWeight.bold, color: isActive ? Colors.white : AppTheme.textDark)),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+
+          if (_selectedDurationType == 'Cả ngày' || _selectedDurationType == 'Tuần' || _selectedDurationType == 'Tháng') ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Ngày bắt đầu', style: TextStyle(fontSize: 13, color: AppTheme.textLight)),
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _startDate,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                          );
+                          if (picked != null) setState(() { _startDate = picked; });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppTheme.accentBlue, width: 1.5),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_today, size: 16, color: AppTheme.accentBlue),
+                              const SizedBox(width: 8),
+                              Text(dateFmt.format(_startDate), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Ngày kết thúc', style: TextStyle(fontSize: 13, color: AppTheme.textLight)),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.event, size: 16, color: Colors.grey.shade500),
+                            const SizedBox(width: 8),
+                            Text(dateFmt.format(_calculateEndDate()), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          const SizedBox(height: 16),
+          // Price summary
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.accentBlue.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Tổng tiền:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                Text(_formatPrice(_calculateTotalPrice()), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.accentBlue)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _confirmDuration,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlue,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Xác nhận', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ),
         ],

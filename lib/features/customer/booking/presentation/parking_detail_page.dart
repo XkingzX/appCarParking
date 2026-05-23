@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:baidoxe/core/theme.dart';
+import 'package:baidoxe/features/customer/account/controllers/saved_places_controller.dart';
 import 'slot_selection_page.dart';
 
 class ParkingDetailPage extends StatefulWidget {
@@ -17,12 +18,17 @@ class ParkingDetailPage extends StatefulWidget {
   State<ParkingDetailPage> createState() => _ParkingDetailPageState();
 }
 
-class _ParkingDetailPageState extends State<ParkingDetailPage> {
+class _ParkingDetailPageState extends State<ParkingDetailPage> with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _selectedPricing;
   final PageController _pageController = PageController();
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _durationKey = GlobalKey();
   bool _hasAutoScrolled = false;
+
+  // Heart Animation
+  late AnimationController _heartAnimController;
+  late Animation<double> _heartScaleAnim;
+  bool _showHeartAnimation = false;
 
   final List<String> _images = [
     'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?q=80&w=1000&auto=format&fit=crop',
@@ -89,6 +95,110 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
   void initState() {
     super.initState();
     _fetchPrices();
+    
+    // Setup Heart Animation
+    _heartAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _heartScaleAnim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.2).chain(CurveTween(curve: Curves.elasticOut)), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0).chain(CurveTween(curve: Curves.easeOut)), weight: 30),
+    ]).animate(_heartAnimController);
+    
+    _heartAnimController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() { _showHeartAnimation = false; });
+      }
+    });
+  }
+
+  void _triggerHeartAnimation() {
+    setState(() { _showHeartAnimation = true; });
+    _heartAnimController.forward(from: 0.0);
+    
+    SavedPlacesController.to.addFavorite(widget.parkingLot);
+    
+    Get.snackbar(
+      'Yêu thích', 
+      'Đã thêm vào mục Yêu thích', 
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.pink,
+      colorText: Colors.white,
+      icon: const Icon(Icons.favorite, color: Colors.white),
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  void _showSaveBottomSheet() {
+    final noteController = TextEditingController();
+    String selectedFolder = 'Đi làm';
+    
+    Get.bottomSheet(
+      StatefulBuilder(
+        builder: (context, setStateSB) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Lưu vào danh sách', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  children: ['Đi làm', 'Đi chơi', 'Xem sau'].map((folder) {
+                    final isSelected = selectedFolder == folder;
+                    return ChoiceChip(
+                      label: Text(folder),
+                      selected: isSelected,
+                      selectedColor: AppTheme.primaryBlue.withOpacity(0.1),
+                      labelStyle: TextStyle(
+                        color: isSelected ? AppTheme.primaryBlue : Theme.of(context).colorScheme.onSurface,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                      onSelected: (selected) {
+                        if (selected) setStateSB(() { selectedFolder = folder; });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: noteController,
+                  decoration: InputDecoration(
+                    hintText: 'Thêm ghi chú (vd: Chỗ này tối khá đông)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      SavedPlacesController.to.savePlace(widget.parkingLot, selectedFolder, noteController.text);
+                      Get.back();
+                      Get.snackbar('Đã lưu', 'Bãi đỗ đã được lưu vào thư mục $selectedFolder', snackPosition: SnackPosition.TOP, backgroundColor: Colors.green, colorText: Colors.white);
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: const Text('Lưu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      ),
+      isScrollControlled: true,
+    );
   }
 
   List<Map<String, dynamic>> _processPrices(List<Map<String, dynamic>> original) {
@@ -170,6 +280,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
 
   @override
   void dispose() {
+    _heartAnimController.dispose();
     _pageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -183,21 +294,39 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
         title: Text(widget.parkingLot['name'] ?? 'Chi tiết bãi đỗ xe'),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share, size: 22),
-            onPressed: () {
-              final text = 'Bãi đỗ: ${widget.parkingLot['name'] ?? ''}\nĐịa chỉ: ${widget.parkingLot['location'] ?? ''}';
-              Clipboard.setData(ClipboardData(text: text));
-              Get.snackbar(
-                'Thành công', 
-                'Đã copy tên và địa chỉ bãi đỗ', 
-                snackPosition: SnackPosition.TOP,
-                backgroundColor: Colors.black87,
-                colorText: Colors.white,
-                duration: const Duration(seconds: 2),
-              );
-            },
-          ),
+          Obx(() {
+            final isFav = SavedPlacesController.to.isFavorite(widget.parkingLot['id'].toString());
+            final isSaved = SavedPlacesController.to.isSaved(widget.parkingLot['id'].toString());
+            
+            return PopupMenuButton<String>(
+              icon: const Icon(Icons.menu, size: 24),
+              onSelected: (value) {
+                if (value == 'favorite') {
+                  _triggerHeartAnimation();
+                } else if (value == 'save') {
+                  _showSaveBottomSheet();
+                } else if (value == 'copy') {
+                  final text = 'Bãi đỗ: ${widget.parkingLot['name'] ?? ''}\nĐịa chỉ: ${widget.parkingLot['location'] ?? ''}';
+                  Clipboard.setData(ClipboardData(text: text));
+                  Get.snackbar('Thành công', 'Đã copy tên và địa chỉ bãi đỗ', snackPosition: SnackPosition.TOP, backgroundColor: Colors.black87, colorText: Colors.white);
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                PopupMenuItem<String>(
+                  value: 'save',
+                  child: Row(children: [Icon(isSaved ? Icons.bookmark : Icons.bookmark_border, color: isSaved ? AppTheme.primaryBlue : null, size: 20), const SizedBox(width: 8), Text(isSaved ? 'Đã lưu bãi đỗ' : 'Lưu bãi đỗ')]),
+                ),
+                PopupMenuItem<String>(
+                  value: 'favorite',
+                  child: Row(children: [Icon(isFav ? Icons.favorite : Icons.favorite_border, color: Colors.pink, size: 20), const SizedBox(width: 8), Text(isFav ? 'Đã yêu thích' : 'Yêu thích')]),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'copy',
+                  child: Row(children: [Icon(Icons.copy, size: 20), const SizedBox(width: 8), Text('Sao chép')]),
+                ),
+              ],
+            );
+          }),
         ],
       ),
       body: Column(
@@ -213,16 +342,38 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                     height: 220,
                     child: Stack(
                       children: [
-                        PageView.builder(
-                          controller: _pageController,
-                          itemCount: _images.length,
-                          itemBuilder: (context, index) {
-                            return Image.network(
-                              _images[index],
-                              fit: BoxFit.cover,
-                            );
-                          },
+                        GestureDetector(
+                          onDoubleTap: _triggerHeartAnimation,
+                          child: PageView.builder(
+                            controller: _pageController,
+                            itemCount: _images.length,
+                            itemBuilder: (context, index) {
+                              return Image.network(
+                                _images[index],
+                                fit: BoxFit.cover,
+                              );
+                            },
+                          ),
                         ),
+                        // Heart Animation Overlay
+                        if (_showHeartAnimation)
+                          Center(
+                            child: ScaleTransition(
+                              scale: _heartScaleAnim,
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.redAccent.withOpacity(0.2), // Ripple effect
+                                ),
+                                child: const Icon(
+                                  Icons.favorite,
+                                  color: Colors.redAccent,
+                                  size: 100,
+                                ),
+                              ),
+                            ),
+                          ),
                         // Nút qua lại mũi tên
                         Positioned(
                           right: 16,

@@ -110,15 +110,13 @@ Thực hiện các bước sau để thiết lập môi trường phát triển 
 
 ## 🤝 Đóng Góp Ý Kiến
 
-Mọi đóng góp, báo cáo lỗi (issues), và đề xuất tính năng đều được chào đón. Vui lòng tham khảo [issues page](https://github.com/yourusername/appCarParking/issues) trước khi tiến hành đóng góp.
+Mọi đóng góp, báo cáo lỗi (issues), và đề xuất tính năng đều được chào đón. Vui lòng tham khảo [issues page](https://github.com/XkingzX/appCarParking/issues) trước khi tiến hành đóng góp.
 
 ## 📝 Giấy Phép (License)
 
 Dự án được phân phối dưới giấy phép MIT. Xem `LICENSE` để biết thêm chi tiết.
 
-## 👤 Tác Giả
-
-**Tên Của Bạn**
+## 👤 Tác Giả: **Ngô Tiến Tới**
 
 - 💼 LinkedIn: [Ngô Tiến Tới](https://www.linkedin.com/in/ngotientoi/)
 - 🐙 GitHub: [@Xk1ngzX](https://github.com/XkingzX)

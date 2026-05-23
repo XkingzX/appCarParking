@@ -859,7 +859,10 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                                       const SizedBox(width: 4),
                                       Text(
                                         '${distance.toStringAsFixed(1)} km $originText',
-                                        style: const TextStyle(color: Colors.blueGrey, fontSize: 13)
+                                        style: TextStyle(
+                                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.blueGrey, 
+                                          fontSize: 13
+                                        )
                                       ),
                                     ],
                                   ),

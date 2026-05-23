@@ -4,6 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:baidoxe/features/customer/account/presentation/vehicle_management_page.dart';
 import 'package:baidoxe/features/customer/booking/presentation/booking_history_page.dart';
 import 'package:baidoxe/core/theme.dart';
+import 'package:baidoxe/features/customer/account/presentation/favorite_page.dart';
+import 'package:baidoxe/features/customer/account/presentation/saved_places_page.dart';
+import 'package:baidoxe/features/customer/account/controllers/saved_places_controller.dart';
 
 class CustomerAccountPage extends StatefulWidget {
   const CustomerAccountPage({Key? key}) : super(key: key);
@@ -233,7 +236,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
               icon: Icons.favorite_border, 
               title: 'Yêu thích', 
               onTap: () {
-                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: primaryColor, colorText: Colors.white);
+                Get.to(() => const FavoritePage());
               }
             ),
             _buildListTile(
@@ -241,7 +244,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
               icon: Icons.bookmark_border, 
               title: 'Vị trí đã lưu', 
               onTap: () {
-                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: primaryColor, colorText: Colors.white);
+                Get.to(() => const SavedPlacesPage());
               }
             ),
             _buildListTile(
@@ -307,7 +310,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
               icon: Icons.delete_outline, 
               title: 'Xoá bộ nhớ đệm', 
               onTap: () {
-                Get.snackbar('Thông báo', 'Đã xóa bộ nhớ đệm', backgroundColor: Colors.green, colorText: Colors.white);
+                SavedPlacesController.to.clearAllCache();
               }
             ),
             _buildListTile(

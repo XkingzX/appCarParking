@@ -51,6 +51,8 @@ class MyApp extends StatelessWidget {
       child: GetMaterialApp(
         title: 'EggsySmart Parking',
         theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system,
         initialRoute: AppPages.INITIAL,
         getPages: AppPages.routes,
         debugShowCheckedModeBanner: false,

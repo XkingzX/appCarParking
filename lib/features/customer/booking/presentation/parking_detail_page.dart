@@ -178,7 +178,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryWhite,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(widget.parkingLot['name'] ?? 'Chi tiết bãi đỗ xe'),
         centerTitle: true,
@@ -291,7 +291,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                         const SizedBox(height: 24),
                         
                         // Tiện ích
-                        Text(key: _durationKey, 'Tiện ích', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                        Text(key: _durationKey, 'Tiện ích', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 12,
@@ -305,7 +305,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                         const SizedBox(height: 32),
                         
                         // Chọn thời gian đỗ
-                        const Text('Chọn thời gian đỗ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                        Text('Chọn thời gian đỗ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                         const SizedBox(height: 12),
                         
                         // Summary box (tap to expand)
@@ -331,7 +331,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: AppTheme.accentBlue, width: 1.5),
                             ),
@@ -346,7 +346,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                                         : 'Nhấn để chọn thời gian',
                                     style: TextStyle(
                                       fontSize: 15, fontWeight: FontWeight.w600,
-                                      color: _selectedPricing != null ? AppTheme.textDark : AppTheme.textLight,
+                                      color: _selectedPricing != null ? Theme.of(context).colorScheme.onSurface : Theme.of(context).textTheme.bodySmall?.color,
                                     ),
                                   ),
                                 ),
@@ -366,16 +366,16 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                         const SizedBox(height: 32),
                         
                         // Đánh giá
-                        const Text('Đánh giá & Bình luận', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                        Text('Đánh giá & Bình luận', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                         const SizedBox(height: 16),
                         
                         // Review Mock
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
+                            color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.grey.shade200),
+                            border: Border.all(color: Colors.grey.withOpacity(0.3)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,20 +390,20 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text('Tien Toi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      Text('Tien Toi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface)),
                                       Row(
                                         children: List.generate(5, (index) => const Icon(Icons.star, color: Colors.amber, size: 16)),
                                       ),
                                     ],
                                   ),
                                   const Spacer(),
-                                  const Text('5.0', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                  Text('5.0', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.onSurface)),
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              const Text(
+                              Text(
                                 'Đã trải nghiệm, uy tín, minh bạch, chất lượng hơn so với cùng giá tiền',
-                                style: TextStyle(color: AppTheme.textDark, height: 1.4),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, height: 1.4),
                               ),
                             ],
                           ),
@@ -421,10 +421,10 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.05),
                   offset: const Offset(0, -4),
                   blurRadius: 8,
                 )
@@ -479,10 +479,10 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.1), blurRadius: 6, offset: const Offset(0, 3))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,15 +503,15 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: isActive ? AppTheme.accentBlue : Colors.grey.shade100,
+                    color: isActive ? AppTheme.accentBlue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade100),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: isActive ? AppTheme.accentBlue : Colors.grey.shade300),
+                    border: Border.all(color: isActive ? AppTheme.accentBlue : Colors.grey.withOpacity(0.3)),
                   ),
                   child: Text(
                     type,
                     style: TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w600,
-                      color: isActive ? Colors.white : AppTheme.textDark,
+                      color: isActive ? Colors.white : Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -522,7 +522,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
 
           // Dynamic sub-panel
           if (_selectedDurationType == 'Giờ') ...[
-            const Text('Chọn số giờ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textDark)),
+            Text('Chọn số giờ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 8),
             SizedBox(
               height: 44,
@@ -539,11 +539,11 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                       margin: const EdgeInsets.only(right: 8),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: isActive ? AppTheme.accentBlue : Colors.grey.shade100,
+                        color: isActive ? AppTheme.accentBlue : (Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade100),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: isActive ? AppTheme.accentBlue : Colors.grey.shade300),
+                        border: Border.all(color: isActive ? AppTheme.accentBlue : Colors.grey.withOpacity(0.3)),
                       ),
-                      child: Text('$h', style: TextStyle(fontWeight: FontWeight.bold, color: isActive ? Colors.white : AppTheme.textDark)),
+                      child: Text('$h', style: TextStyle(fontWeight: FontWeight.bold, color: isActive ? Colors.white : Theme.of(context).colorScheme.onSurface)),
                     ),
                   );
                 },
@@ -573,7 +573,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: AppTheme.accentBlue, width: 1.5),
                           ),
@@ -581,7 +581,7 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                             children: [
                               const Icon(Icons.calendar_today, size: 16, color: AppTheme.accentBlue),
                               const SizedBox(width: 8),
-                              Text(dateFmt.format(_startDate), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                              Text(dateFmt.format(_startDate), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
                             ],
                           ),
                         ),
@@ -594,20 +594,20 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Ngày kết thúc', style: TextStyle(fontSize: 13, color: AppTheme.textLight)),
+                      Text('Ngày kết thúc', style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color)),
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: Colors.grey.withOpacity(0.3)),
                         ),
                         child: Row(
                           children: [
                             Icon(Icons.event, size: 16, color: Colors.grey.shade500),
                             const SizedBox(width: 8),
-                            Text(dateFmt.format(_calculateEndDate()), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+                            Text(dateFmt.format(_calculateEndDate()), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade400 : Colors.grey.shade600)),
                           ],
                         ),
                       ),
@@ -667,8 +667,8 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> {
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: AppTheme.primaryBlue,
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppTheme.primaryBlue,
               fontWeight: FontWeight.w600,
             ),
           ),

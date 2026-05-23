@@ -82,7 +82,7 @@ class _VehicleManagementPageState extends State<VehicleManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryWhite,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Quản lý phương tiện'),
       ),
@@ -183,7 +183,7 @@ class _VehicleManagementPageState extends State<VehicleManagementPage> {
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textDark),
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
       ),
     );
   }
@@ -217,10 +217,10 @@ class _VehicleManagementPageState extends State<VehicleManagementPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.accentBlue : Colors.white,
+          color: isSelected ? AppTheme.accentBlue : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppTheme.accentBlue : Colors.grey.shade300,
+            color: isSelected ? AppTheme.accentBlue : Colors.grey.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6),
             width: 2,
           ),
           boxShadow: isSelected
@@ -229,13 +229,13 @@ class _VehicleManagementPageState extends State<VehicleManagementPage> {
         ),
         child: Column(
           children: [
-            Icon(icon, size: 40, color: isSelected ? Colors.white : AppTheme.textLight),
+            Icon(icon, size: 40, color: isSelected ? Colors.white : Theme.of(context).textTheme.bodySmall?.color),
             const SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : AppTheme.textDark,
+                color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],

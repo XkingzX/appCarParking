@@ -57,34 +57,38 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
     }
   }
 
-  Widget _buildListTile({
+  Widget _buildListTile(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
-    Color iconColor = AppTheme.textDark,
-    Color textColor = AppTheme.textDark,
+    Color? iconColor,
+    Color? textColor,
     bool showTrailing = true,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultColor = isDark ? AppTheme.darkTextMain : AppTheme.textDark;
+    
     return InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         child: Row(
           children: [
-            Icon(icon, color: iconColor, size: 24),
+            Icon(icon, color: iconColor ?? defaultColor, size: 24),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 title,
                 style: TextStyle(
-                  color: textColor,
+                  color: textColor ?? defaultColor,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
             if (showTrailing)
-              const Icon(Icons.chevron_right, color: AppTheme.textLight, size: 24),
+              Icon(Icons.chevron_right, color: isDark ? AppTheme.darkTextSub : AppTheme.textLight, size: 24),
           ],
         ),
       ),
@@ -93,15 +97,23 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final subTextColor = isDark ? AppTheme.darkTextSub : AppTheme.textLight;
+    final dividerColor = isDark ? Colors.white.withOpacity(0.1) : const Color(0xFFEDF2F7);
+    final cardColor = Theme.of(context).colorScheme.surface;
+    final primaryColor = Theme.of(context).primaryColor;
+
     return Scaffold(
-      backgroundColor: AppTheme.primaryWhite,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Hồ sơ của tôi',
           style: TextStyle(
-            color: AppTheme.textDark,
+            color: textColor,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -109,9 +121,12 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppTheme.textDark),
+            icon: Icon(
+              isDark ? Icons.light_mode : Icons.dark_mode,
+              color: textColor,
+            ),
             onPressed: () {
-              // TODO: Navigate to settings
+              Get.changeThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
             },
           ),
           const SizedBox(width: 8),
@@ -129,8 +144,8 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
                   children: [
                     CircleAvatar(
                       radius: 45,
-                      backgroundColor: AppTheme.accentBlue.withOpacity(0.1),
-                      child: const Icon(Icons.person, size: 45, color: AppTheme.primaryBlue),
+                      backgroundColor: primaryColor.withOpacity(0.1),
+                      child: Icon(Icons.person, size: 45, color: primaryColor),
                     ),
                     Positioned(
                       bottom: 0,
@@ -138,17 +153,17 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: cardColor,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
                               blurRadius: 4,
                               spreadRadius: 1,
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.camera_alt_outlined, size: 16, color: AppTheme.textDark),
+                        child: Icon(Icons.camera_alt_outlined, size: 16, color: textColor),
                       ),
                     ),
                   ],
@@ -167,10 +182,10 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
                           )
                         : Text(
                             _fullName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20, 
                               fontWeight: FontWeight.bold, 
-                              color: AppTheme.textDark,
+                              color: textColor,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -178,7 +193,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
                       const SizedBox(height: 4),
                       Text(
                         _email,
-                        style: const TextStyle(fontSize: 14, color: AppTheme.textLight),
+                        style: TextStyle(fontSize: 14, color: subTextColor),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -190,7 +205,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
                             // TODO: Edit profile
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryBlue,
+                            backgroundColor: primaryColor,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -214,72 +229,81 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
             
             // List items Group 1
             _buildListTile(
+              context,
               icon: Icons.favorite_border, 
               title: 'Yêu thích', 
               onTap: () {
-                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: AppTheme.primaryBlue, colorText: Colors.white);
+                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: primaryColor, colorText: Colors.white);
               }
             ),
             _buildListTile(
+              context,
               icon: Icons.bookmark_border, 
               title: 'Vị trí đã lưu', 
               onTap: () {
-                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: AppTheme.primaryBlue, colorText: Colors.white);
+                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: primaryColor, colorText: Colors.white);
               }
             ),
             _buildListTile(
+              context,
               icon: Icons.local_parking_outlined, 
               title: 'Quản lý các trang bãi đỗ', 
               onTap: () {
-                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: AppTheme.primaryBlue, colorText: Colors.white);
+                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: primaryColor, colorText: Colors.white);
               }
             ),
             
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Divider(color: Color(0xFFEDF2F7), thickness: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Divider(color: dividerColor, thickness: 1),
             ),
             
             // List items Group 2
             _buildListTile(
+              context,
               icon: Icons.directions_car_outlined, 
               title: 'Quản lý phương tiện', 
               onTap: () => Get.to(() => const VehicleManagementPage()),
             ),
             _buildListTile(
+              context,
               icon: Icons.account_balance_wallet_outlined, 
               title: 'Phương thức thanh toán', 
               onTap: () {
-                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: AppTheme.primaryBlue, colorText: Colors.white);
+                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: primaryColor, colorText: Colors.white);
               }
             ),
             _buildListTile(
+              context,
               icon: Icons.history, 
               title: 'Lịch sử đỗ xe', 
               onTap: () => Get.to(() => const BookingHistoryPage()),
             ),
             _buildListTile(
+              context,
               icon: Icons.star_border, 
               title: 'Đánh giá & nhận xét', 
               onTap: () {
-                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: AppTheme.primaryBlue, colorText: Colors.white);
+                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: primaryColor, colorText: Colors.white);
               }
             ),
             _buildListTile(
+              context,
               icon: Icons.storefront_outlined, 
               title: 'Đăng ký chủ bãi đỗ', 
               onTap: () {
-                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: AppTheme.primaryBlue, colorText: Colors.white);
+                Get.snackbar('Thông báo', 'Tính năng đang phát triển', backgroundColor: primaryColor, colorText: Colors.white);
               }
             ),
             
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Divider(color: Color(0xFFEDF2F7), thickness: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Divider(color: dividerColor, thickness: 1),
             ),
             
             // List items Group 3
             _buildListTile(
+              context,
               icon: Icons.delete_outline, 
               title: 'Xoá bộ nhớ đệm', 
               onTap: () {
@@ -287,6 +311,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
               }
             ),
             _buildListTile(
+              context,
               icon: Icons.logout, 
               title: 'Đăng xuất', 
               textColor: Colors.red,
@@ -296,10 +321,10 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
             ),
             
             const SizedBox(height: 32),
-            const Center(
+            Center(
               child: Text(
                 'Phiên bản 1.0.0', 
-                style: TextStyle(color: AppTheme.textLight, fontSize: 13),
+                style: TextStyle(color: subTextColor, fontSize: 13),
               ),
             ),
             const SizedBox(height: 24),

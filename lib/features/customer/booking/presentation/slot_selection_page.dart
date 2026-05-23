@@ -68,7 +68,7 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryWhite,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(widget.parkingLot['name'] ?? 'PARK ZONE'),
         centerTitle: true,
@@ -84,9 +84,9 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildLegend(Colors.white, AppTheme.textDark, 'Trống'),
-                _buildLegend(AppTheme.accentBlue, Colors.white, 'Đang chọn'),
-                _buildLegend(Colors.grey.shade300, AppTheme.textDark, 'Đã kín', isOccupied: true),
+                _buildLegend(context, Theme.of(context).cardColor, Theme.of(context).colorScheme.onSurface, 'Trống'),
+                _buildLegend(context, AppTheme.accentBlue, Colors.white, 'Đang chọn'),
+                _buildLegend(context, Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade300, Theme.of(context).colorScheme.onSurface, 'Đã kín', isOccupied: true),
               ],
             ),
           ),
@@ -138,10 +138,10 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
           // Bottom Book Button
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.1), blurRadius: 10, offset: const Offset(0, -5))],
             ),
             child: ElevatedButton(
               onPressed: selectedSlot != null
@@ -174,16 +174,16 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildTabItem('Khu A', true),
-          _buildTabItem('Khu B', false),
-          _buildTabItem('Khu C', false),
-          _buildTabItem('Khu VIP', false),
+          _buildTabItem(context, 'Khu A', true),
+          _buildTabItem(context, 'Khu B', false),
+          _buildTabItem(context, 'Khu C', false),
+          _buildTabItem(context, 'Khu VIP', false),
         ],
       ),
     );
   }
 
-  Widget _buildTabItem(String text, bool isSelected) {
+  Widget _buildTabItem(BuildContext context, String text, bool isSelected) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
@@ -197,7 +197,7 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
       child: Text(
         text,
         style: TextStyle(
-          color: isSelected ? AppTheme.textDark : AppTheme.textLight,
+          color: isSelected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).textTheme.bodySmall?.color,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -214,7 +214,7 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Left Slot (Row A)
-          _buildSlot(leftSlotIndex, _getSlotName(leftSlotIndex, true), isLeft: true),
+          _buildSlot(context, leftSlotIndex, _getSlotName(leftSlotIndex, true), isLeft: true),
           
           // Center Pathway
           Container(
@@ -241,13 +241,13 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
           ),
           
           // Right Slot (Row B)
-          _buildSlot(rightSlotIndex, _getSlotName(rightSlotIndex, false), isLeft: false),
+          _buildSlot(context, rightSlotIndex, _getSlotName(rightSlotIndex, false), isLeft: false),
         ],
       ),
     );
   }
 
-  Widget _buildSlot(int index, String label, {required bool isLeft}) {
+  Widget _buildSlot(BuildContext context, int index, String label, {required bool isLeft}) {
     bool isOccupied = _occupiedSlots.contains(index);
     bool isSelected = selectedSlot == index;
 
@@ -263,9 +263,9 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
         width: 100,
         height: 60,
         decoration: BoxDecoration(
-          color: isOccupied ? Colors.grey.shade200 : (isSelected ? AppTheme.accentBlue : Colors.white),
+          color: isOccupied ? (Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade200) : (isSelected ? AppTheme.accentBlue : Theme.of(context).cardColor),
           border: Border.all(
-            color: isSelected ? AppTheme.accentBlue : Colors.grey.shade300,
+            color: isSelected ? AppTheme.accentBlue : Colors.grey.withOpacity(0.3),
             width: 1.5,
           ),
           borderRadius: isLeft
@@ -313,7 +313,7 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
     );
   }
 
-  Widget _buildLegend(Color color, Color textColor, String label, {bool isOccupied = false}) {
+  Widget _buildLegend(BuildContext context, Color color, Color textColor, String label, {bool isOccupied = false}) {
     return Row(
       children: [
         Container(
@@ -321,7 +321,7 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
           height: 24,
           decoration: BoxDecoration(
             color: color,
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: Colors.grey.withOpacity(0.3)),
             borderRadius: BorderRadius.circular(6),
           ),
           alignment: Alignment.center,

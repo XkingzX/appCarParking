@@ -137,7 +137,7 @@ class _PaymentPageState extends State<PaymentPage> {
     final priceStr = widget.selectedPricing['price'] ?? '20.000đ';
 
     return Scaffold(
-      backgroundColor: AppTheme.primaryWhite,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Thanh toán'),
       ),
@@ -152,6 +152,7 @@ class _PaymentPageState extends State<PaymentPage> {
             const SizedBox(height: 16),
             Card(
               elevation: 2,
+              color: Theme.of(context).cardColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -172,6 +173,7 @@ class _PaymentPageState extends State<PaymentPage> {
             const SizedBox(height: 16),
             Card(
               elevation: 2,
+              color: Theme.of(context).cardColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Column(
                 children: [
@@ -180,7 +182,7 @@ class _PaymentPageState extends State<PaymentPage> {
                       title: Text('Ví cá nhân (Số dư: ${_balance.toInt()}đ)'),
                       value: 'balance',
                       groupValue: selectedPayment,
-                      activeColor: AppTheme.primaryBlue,
+                      activeColor: Theme.of(context).primaryColor,
                       onChanged: (val) {
                         setState(() {
                           selectedPayment = val.toString();
@@ -205,7 +207,7 @@ class _PaymentPageState extends State<PaymentPage> {
                     title: const Text('Thẻ tín dụng / Ghi nợ'),
                     value: 'card',
                     groupValue: selectedPayment,
-                    activeColor: AppTheme.primaryBlue,
+                    activeColor: Theme.of(context).primaryColor,
                     onChanged: (val) {
                       setState(() {
                         selectedPayment = val.toString();
@@ -227,7 +229,7 @@ class _PaymentPageState extends State<PaymentPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Tổng cộng:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(priceStr, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+                  Text(priceStr, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor)),
                 ],
               ),
             ),
@@ -236,7 +238,7 @@ class _PaymentPageState extends State<PaymentPage> {
               onPressed: selectedPayment.isNotEmpty && !_isProcessing ? _confirmPayment : null,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 56),
-                backgroundColor: AppTheme.primaryBlue,
+                backgroundColor: Theme.of(context).primaryColor,
                 disabledBackgroundColor: Colors.grey.shade400,
               ),
               child: _isProcessing 
@@ -253,12 +255,12 @@ class _PaymentPageState extends State<PaymentPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(color: AppTheme.textLight, fontSize: 15)),
+        Text(title, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 15)),
         Expanded(
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textDark),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Theme.of(context).colorScheme.onSurface),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

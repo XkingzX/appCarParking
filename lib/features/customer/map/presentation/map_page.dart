@@ -332,10 +332,10 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
       key: const ValueKey('DirectionsPanel'),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.1), blurRadius: 10, offset: const Offset(0, 5)),
         ],
       ),
       child: Column(
@@ -387,13 +387,13 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
                           color: (_searchedPosition != null && _currentPosition != null) 
-                              ? Colors.white 
-                              : Colors.grey.shade100,
+                              ? Theme.of(context).cardColor 
+                              : (Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade100),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: (_searchedPosition != null && _currentPosition != null)
                                 ? Colors.blue.shade300
-                                : Colors.grey.shade300,
+                                : Colors.grey.withOpacity(0.3),
                             width: (_searchedPosition != null && _currentPosition != null) ? 1.5 : 1.0,
                           ),
                         ),
@@ -402,7 +402,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                             Expanded(
                               child: Text(
                                 _originType == 'current' ? 'Vị trí hiện tại của bạn' : 'Điểm vừa tìm kiếm',
-                                style: const TextStyle(fontSize: 15, color: Colors.black87),
+                                style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurface),
                               ),
                             ),
                             if (_searchedPosition != null && _currentPosition != null)
@@ -418,11 +418,11 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                           ? Container(
                               margin: const EdgeInsets.only(top: 4),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: Theme.of(context).cardColor,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: Colors.grey.shade300),
-                                boxShadow: const [
-                                  BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+                                boxShadow: [
+                                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))
                                 ],
                               ),
                               child: Column(
@@ -464,13 +464,13 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(color: Colors.grey.withOpacity(0.3)),
                       ),
                       child: Text(
                         _destinationLot?['name'] ?? 'Bãi đỗ xe',
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                       ),
                     ),
                   ],
@@ -562,10 +562,10 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                       key: const ValueKey('SearchBar'),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(30),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.1), blurRadius: 10, offset: const Offset(0, 5)),
                         ],
                       ),
                       child: Autocomplete<Map<String, dynamic>>(
@@ -635,6 +635,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                             alignment: Alignment.topLeft,
                             child: Material(
                               elevation: 4.0,
+                              color: Theme.of(context).cardColor,
                               shape: const RoundedRectangleBorder(
                                 borderRadius: BorderRadius.only(
                                   bottomLeft: Radius.circular(20),
@@ -711,6 +712,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                       child: Card(
                         margin: const EdgeInsets.only(right: 16),
                         elevation: 4,
+                        color: Theme.of(context).cardColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         child: Container(
                           width: 300,

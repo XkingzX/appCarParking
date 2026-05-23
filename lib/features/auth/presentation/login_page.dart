@@ -124,11 +124,11 @@ class _LoginPageState extends State<LoginPage> {
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(32),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.primaryBlue.withOpacity(0.1),
+                            color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.1),
                             blurRadius: 30,
                             offset: const Offset(0, 10),
                           ),
@@ -137,9 +137,9 @@ class _LoginPageState extends State<LoginPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
+                          Text(
                             'Đăng nhập',
-                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                           ),
                           const SizedBox(height: 24),
 
@@ -187,7 +187,7 @@ class _LoginPageState extends State<LoginPage> {
                                 Get.snackbar(
                                   'Thông báo',
                                   'Tính năng đang phát triển',
-                                  backgroundColor: Colors.orange,
+                                  backgroundColor: Theme.of(context).primaryColor,
                                   colorText: Colors.white,
                                 );
                               },
@@ -260,7 +260,7 @@ class _LoginPageState extends State<LoginPage> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text("Chưa có tài khoản? ", style: TextStyle(color: AppTheme.textLight)),
+                              Text("Chưa có tài khoản? ", style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color)),
                               GestureDetector(
                                 onTap: () {
                                   debugPrint('🔀 [NAVIGATION] Chuyển đến trang đăng ký');

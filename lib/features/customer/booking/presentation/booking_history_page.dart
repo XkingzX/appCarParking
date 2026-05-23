@@ -27,7 +27,7 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryWhite,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Lịch sử đỗ xe'),
         centerTitle: true,
@@ -62,6 +62,7 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> with SingleTick
       padding: const EdgeInsets.all(16),
       children: [
         _buildBookingCard(
+          context,
           parkingName: 'Bãi xe ô tô ĐH Thủ Dầu Một',
           slotName: 'A12',
           vehicleName: 'Honda City',
@@ -81,6 +82,7 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> with SingleTick
       padding: const EdgeInsets.all(16),
       children: [
         _buildBookingCard(
+          context,
           parkingName: 'GO! Di An Parking Lot',
           slotName: 'C05',
           vehicleName: 'Honda City',
@@ -91,6 +93,7 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> with SingleTick
           price: 'Tổng: 60.000đ',
         ),
         _buildBookingCard(
+          context,
           parkingName: 'Bãi xe trung tâm Bình Dương',
           slotName: 'B02',
           vehicleName: 'Honda City',
@@ -104,7 +107,8 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> with SingleTick
     );
   }
 
-  Widget _buildBookingCard({
+  Widget _buildBookingCard(
+    BuildContext context, {
     required String parkingName,
     required String slotName,
     required String vehicleName,
@@ -116,6 +120,7 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> with SingleTick
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      color: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 4,
       shadowColor: Colors.black12,
@@ -130,7 +135,7 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> with SingleTick
                 Expanded(
                   child: Text(
                     parkingName,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.onSurface),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -151,25 +156,25 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> with SingleTick
             const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.directions_car, size: 20, color: AppTheme.textLight),
+                Icon(Icons.directions_car, size: 20, color: Theme.of(context).textTheme.bodySmall?.color),
                 const SizedBox(width: 8),
-                Text('$vehicleName ($licensePlate)', style: const TextStyle(color: AppTheme.textDark)),
+                Text('$vehicleName ($licensePlate)', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
               ],
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.access_time, size: 20, color: AppTheme.textLight),
+                Icon(Icons.access_time, size: 20, color: Theme.of(context).textTheme.bodySmall?.color),
                 const SizedBox(width: 8),
-                Text(startTime, style: const TextStyle(color: AppTheme.textDark)),
+                Text(startTime, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
               ],
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.local_parking, size: 20, color: AppTheme.textLight),
+                Icon(Icons.local_parking, size: 20, color: Theme.of(context).textTheme.bodySmall?.color),
                 const SizedBox(width: 8),
-                Text('Vị trí đỗ: $slotName', style: const TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold)),
+                Text('Vị trí đỗ: $slotName', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
               ],
             ),
             const Padding(
@@ -181,7 +186,7 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> with SingleTick
               children: [
                 Text(
                   price,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primaryBlue),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).primaryColor),
                 ),
                 if (status == 'Đang đỗ')
                   ElevatedButton(

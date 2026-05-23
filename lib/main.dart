@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/theme.dart';
 import 'routes/app_pages.dart';
 import 'package:baidoxe/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:baidoxe/features/customer/account/controllers/saved_places_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,9 @@ void main() async {
   } else {
     debugPrint("❌ SUPABASE_URL or SUPABASE_ANON_KEY is missing in .env");
   }
+
+  // Initialize global controllers
+  Get.put(SavedPlacesController());
 
   runApp(
       BlocProvider(

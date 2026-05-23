@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -17,12 +18,33 @@ class CustomerMapPage extends StatefulWidget {
 
 class _CustomerMapPageState extends State<CustomerMapPage> {
   final MapController _mapController = MapController();
+  Timer? _debounce;
 
   LatLng? _currentPosition; // Vị trí thật của người dùng
   LatLng? _searchedPosition; // Vị trí người dùng vừa search
 
   bool _isLoadingLocation = true;
   List<Map<String, dynamic>> _parkingLots = [];
+
+  List<Map<String, dynamic>> get _displayedLots {
+    final lots = _parkingLots.where((lot) {
+      final dist = lot['exact_distance_km'] ?? 999.0;
+      bool isVisible = false;
+      try {
+        final bounds = _mapController.camera.visibleBounds;
+        final lat = lot['latitude'];
+        final lon = lot['longitude'];
+        if (lat != null && lon != null) {
+          isVisible = bounds.contains(LatLng(lat, lon));
+        }
+      } catch (e) {
+        // Bản đồ chưa khởi tạo xong
+      }
+      return dist <= 20.0 || isVisible;
+    }).toList();
+    lots.sort((a, b) => (a['exact_distance_km'] ?? 999.0).compareTo(b['exact_distance_km'] ?? 999.0));
+    return lots;
+  }
   int _searchRequestId = 0;
   List<LatLng> _routePoints = [];
   bool _isDirectionsMode = false;
@@ -92,8 +114,8 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
         });
         _mapController.move(_currentPosition!, 15.0);
 
-        // Fetch bãi đỗ xung quanh vị trí thật
-        _fetchNearbyParkingLots(_currentPosition!.latitude, _currentPosition!.longitude);
+        // Lấy toàn bộ bãi đỗ trong bán kính 20km ngay khi mở app
+        _fetchInitialParkingLots(_currentPosition!.latitude, _currentPosition!.longitude);
       }
     } catch (e) {
       debugPrint("Lỗi lấy GPS: $e");
@@ -103,88 +125,129 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
     }
   }
 
-  Future<void> _fetchNearbyParkingLots(double lat, double lng) async {
-    setState(() {
-      _routePoints.clear();
-      _isDirectionsMode = false;
-      _destinationLot = null;
-      _routeDistanceKm = null;
-      _routeDurationMin = null;
+  void _onMapPositionChanged(MapCamera camera, bool hasGesture) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _loadParkingLotsInBounds(camera.visibleBounds);
+      }
     });
+  }
+
+  Future<void> _loadParkingLotsInBounds(LatLngBounds bounds) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('parking_lots')
+          .select()
+          .gte('latitude', bounds.south)
+          .lte('latitude', bounds.north)
+          .gte('longitude', bounds.west)
+          .lte('longitude', bounds.east)
+          .limit(50); // Giới hạn 50 bãi đỗ mỗi lần fetch để tối ưu
+
+      if (mounted && response != null) {
+        final List<Map<String, dynamic>> newLots = List<Map<String, dynamic>>.from(response);
+        
+        setState(() {
+          // Lưu trữ tích lũy (Upsert) để bãi đỗ không bị biến mất khi vuốt sang chỗ khác
+          for (var lot in newLots) {
+            final id = lot['id'];
+            final index = _parkingLots.indexWhere((element) => element['id'] == id);
+            if (index == -1) {
+              _parkingLots.add(lot);
+            }
+          }
+        });
+        
+        _updateDistancesLocally();
+      }
+    } catch (e) {
+      debugPrint('Lỗi fetch bãi đỗ từ Supabase (Bounding Box): $e');
+    }
+  }
+
+  Future<void> _fetchInitialParkingLots(double lat, double lng) async {
     try {
       final response = await Supabase.instance.client.rpc(
         'get_nearby_parking_lots',
         params: {
           'user_lat': lat,
           'user_lon': lng,
-          'max_distance_meters': 20000, // 20km
-          'limit_count': 20,
+          'max_distance_meters': 20000,
+          'limit_count': 50,
         },
       );
-
       if (mounted && response != null) {
+        final List<Map<String, dynamic>> newLots = List<Map<String, dynamic>>.from(response);
         setState(() {
-          _parkingLots = List<Map<String, dynamic>>.from(response);
+          for (var lot in newLots) {
+            final id = lot['id'];
+            if (!_parkingLots.any((e) => e['id'] == id)) {
+              _parkingLots.add(lot);
+            }
+          }
         });
-        
-        _updateExactDistances();
-
-        // XỬ LÝ LOGIC: NẾU KHÔNG CÓ BÃI ĐỖ SAU KHI SEARCH
-        if (_parkingLots.isEmpty && _searchedPosition != null) {
-          Get.snackbar(
-            'Thông báo',
-            'Không tồn tại bãi đỗ xe nào trong phạm vi 20km quanh đây.',
-            backgroundColor: Colors.redAccent,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 4),
-            snackPosition: SnackPosition.TOP,
-          );
-        }
+        _updateDistancesLocally();
       }
     } catch (e) {
-      debugPrint('Lỗi fetch bãi đỗ từ Supabase: $e');
+      debugPrint('Lỗi fetch bãi đỗ ban đầu: $e');
     }
   }
 
-  Future<void> _updateExactDistances() async {
+  // Dùng để cảnh báo nếu vùng search hoàn toàn trống rỗng
+  Future<void> _checkNearbyAfterSearch(LatLng searchPos) async {
+    try {
+      final response = await Supabase.instance.client.rpc(
+        'get_nearby_parking_lots',
+        params: {
+          'user_lat': searchPos.latitude,
+          'user_lon': searchPos.longitude,
+          'max_distance_meters': 20000,
+          'limit_count': 1,
+        },
+      );
+      if (mounted && (response == null || (response as List).isEmpty)) {
+        Get.snackbar(
+          'Thông báo',
+          'Không tồn tại bãi đỗ xe nào trong phạm vi 20km quanh đây.',
+          backgroundColor: Colors.redAccent,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+          snackPosition: SnackPosition.TOP,
+        );
+      }
+    } catch (e) {
+      debugPrint('Lỗi check nearby: $e');
+    }
+  }
+
+  void _updateDistancesLocally() {
     final startLatLng = _originType == 'searched' && _searchedPosition != null 
         ? _searchedPosition 
         : _currentPosition;
     
     if (startLatLng == null) return;
-    final startLat = startLatLng.latitude;
-    final startLon = startLatLng.longitude;
 
-    for (int i = 0; i < _parkingLots.length; i++) {
-      if (!mounted) break;
-      final lot = _parkingLots[i];
-      final destLat = lot['latitude'];
-      final destLon = lot['longitude'];
-      
-      if (destLat == null || destLon == null) continue;
+    setState(() {
+      for (int i = 0; i < _parkingLots.length; i++) {
+        final lot = _parkingLots[i];
+        final destLat = lot['latitude'];
+        final destLon = lot['longitude'];
+        if (destLat == null || destLon == null) continue;
 
-      final url = Uri.parse('http://router.project-osrm.org/route/v1/driving/$startLon,$startLat;$destLon,$destLat?overview=false');
-      try {
-        final response = await http.get(url);
-        if (response.statusCode == 200) {
-           final data = json.decode(response.body);
-           final routes = data['routes'];
-           if (routes != null && routes.isNotEmpty) {
-             final distance = routes[0]['distance'];
-             if (mounted) {
-               setState(() {
-                 _parkingLots[i] = {
-                   ..._parkingLots[i],
-                   'exact_distance_km': distance / 1000.0,
-                 };
-               });
-             }
-           }
-        }
-      } catch (e) {
-        debugPrint('Error updating exact distance: $e');
+        // Tính khoảng cách tức thời không cần gọi HTTP để tránh spam
+        final distanceMeters = const Distance().as(
+          LengthUnit.Meter,
+          startLatLng,
+          LatLng(destLat, destLon),
+        );
+        
+        _parkingLots[i] = {
+          ...lot,
+          'exact_distance_km': distanceMeters / 1000.0,
+        };
       }
-    }
+    });
   }
 
   Future<Iterable<Map<String, dynamic>>> _debouncedSearch(String query) async {
@@ -205,24 +268,23 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
     return await _searchPlaces(query);
   }
 
-  // GỌI API PHOTON (OSM) ĐỂ GỢI Ý ĐỊA ĐIỂM THÔNG MINH HƠN
+  // GỌI API NOMINATIM ĐỂ GỢI Ý ĐỊA ĐIỂM CHÍNH XÁC HƠN Ở VIỆT NAM
   Future<List<Map<String, dynamic>>> _searchPlaces(String query) async {
     if (query.isEmpty) return [];
 
     try {
       final queryParams = {
-        'q': query,
+        'q': '$query, Việt Nam',
+        'format': 'json',
         'limit': '5',
-        // Bounding box bao trọn lãnh thổ Việt Nam (Tây, Nam, Đông, Bắc)
-        // Giúp Photon tìm kiếm trên toàn quốc mà không bị dính vào 1 tỉnh cụ thể
-        'bbox': '102.14,8.18,109.46,23.39',
+        'countrycodes': 'vn',
+        'addressdetails': '1',
       };
 
-      final url = Uri.https('photon.komoot.io', '/api', queryParams);
+      final url = Uri.https('nominatim.openstreetmap.org', '/search', queryParams);
 
       debugPrint("=== API REQUEST: Đang gọi URL: $url ===");
 
-      // Cần phải có User-Agent, nếu không các API Public sẽ trả về 403 Forbidden
       final response = await http.get(
         url,
         headers: {
@@ -234,29 +296,14 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
       debugPrint("=== API RESPONSE STATUS: ${response.statusCode} ===");
 
       if (response.statusCode == 200) {
-        // Photon trả về định dạng GeoJSON
-        final Map<String, dynamic> data = json.decode(response.body);
-        final List features = data['features'] ?? [];
-        debugPrint("=== API KẾT QUẢ: Tìm thấy ${features.length} địa điểm ===");
+        final List<dynamic> data = json.decode(response.body);
+        debugPrint("=== API KẾT QUẢ: Tìm thấy ${data.length} địa điểm ===");
 
-        return features.map((e) {
-          final properties = e['properties'];
-          final geometry = e['geometry'];
-          final coords = geometry['coordinates']; // [lon, lat]
-
-          final name = properties['name'] ?? '';
-          final city = properties['city'] ?? properties['state'] ?? '';
-          final street = properties['street'] ?? '';
-          
-          String displayName = name;
-          if (street.isNotEmpty && street != name) displayName += ', $street';
-          if (city.isNotEmpty && city != name) displayName += ', $city';
-          if (displayName.isEmpty) displayName = 'Địa điểm không xác định';
-
+        return data.map((e) {
           return {
-            'display_name': displayName,
-            'lat': (coords[1] as num).toDouble(), // lat
-            'lon': (coords[0] as num).toDouble(), // lon
+            'display_name': e['display_name'] ?? 'Địa điểm không xác định',
+            'lat': double.tryParse(e['lat']?.toString() ?? '0') ?? 0.0,
+            'lon': double.tryParse(e['lon']?.toString() ?? '0') ?? 0.0,
           };
         }).toList();
       } else {
@@ -437,7 +484,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                                         _showOriginDropdown = false;
                                       });
                                       if (_destinationLot != null) _drawRouteTo(_destinationLot!);
-                                      _updateExactDistances();
+                                      _updateDistancesLocally();
                                     },
                                   ),
                                   const Divider(height: 1),
@@ -451,7 +498,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                                         _showOriginDropdown = false;
                                       });
                                       if (_destinationLot != null) _drawRouteTo(_destinationLot!);
-                                      _updateExactDistances();
+                                      _updateDistancesLocally();
                                     },
                                   ),
                                 ],
@@ -494,6 +541,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
             options: MapOptions(
               initialCenter: _currentPosition ?? const LatLng(10.7769, 106.7009),
               initialZoom: 14.0,
+              onPositionChanged: _onMapPositionChanged,
             ),
             children: [
               TileLayer(
@@ -521,7 +569,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                     ),
 
                   // 3. Markers Bãi đỗ xe (Màu Đỏ)
-                  ..._parkingLots.map((lot) => Marker(
+                  ..._displayedLots.map((lot) => Marker(
                         point: LatLng(lot['latitude'], lot['longitude']),
                         width: 40,
                         height: 40,
@@ -585,11 +633,22 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                             _originType = 'searched'; // Mặc định chuyển sang searched
                           });
 
-                          // Chuyển map đến vị trí search, zoom out để thấy bán kính 20km
-                          _mapController.move(newPos, 12.0);
+                          setState(() {
+                            _routePoints.clear();
+                            _isDirectionsMode = false;
+                            _destinationLot = null;
+                            _routeDistanceKm = null;
+                            _routeDurationMin = null;
+                          });
 
-                          // Lấy bãi đỗ xe XUNG QUANH điểm vừa search
-                          _fetchNearbyParkingLots(lat, lon);
+                          // Kiểm tra và hiển thị thông báo 20km nếu không có bãi đỗ
+                          _checkNearbyAfterSearch(newPos);
+                          
+                          // Lấy trước bãi đỗ trong 20km quanh điểm search
+                          _fetchInitialParkingLots(lat, lon);
+
+                          // Chuyển map đến vị trí search, map sẽ tự động gọi onPositionChanged để fetch dữ liệu
+                          _mapController.move(newPos, 14.0);
                         },
                         fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
                           return TextField(
@@ -602,8 +661,32 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                               hintText: 'Tìm địa điểm... (VD: Hà Nội)',
                               prefixIcon: IconButton(
                                 icon: const Icon(Icons.search),
-                                onPressed: () {
-                                  onFieldSubmitted();
+                                onPressed: () async {
+                                  FocusScope.of(context).unfocus();
+                                  final text = textEditingController.text;
+                                  if (text.isNotEmpty) {
+                                    final results = await _searchPlaces(text);
+                                    if (results.isNotEmpty) {
+                                      final selection = results.first;
+                                      final lat = selection['lat'];
+                                      final lon = selection['lon'];
+                                      final newPos = LatLng(lat, lon);
+
+                                      setState(() {
+                                        _searchedPosition = newPos;
+                                        _originType = 'searched';
+                                        _routePoints.clear();
+                                        _isDirectionsMode = false;
+                                        _destinationLot = null;
+                                        _routeDistanceKm = null;
+                                        _routeDurationMin = null;
+                                      });
+
+                                      _checkNearbyAfterSearch(newPos);
+                                      _fetchInitialParkingLots(lat, lon);
+                                      _mapController.move(newPos, 14.0);
+                                    }
+                                  }
                                 },
                               ),
                               suffixIcon: Row(
@@ -681,7 +764,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
             ),
 
           // Danh sách các bãi đỗ xe (Chỉ hiện khi có dữ liệu)
-          if (_parkingLots.isNotEmpty)
+          if (_displayedLots.isNotEmpty)
             Positioned(
               bottom: 16,
               left: 0,
@@ -691,9 +774,9 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   scrollDirection: Axis.horizontal,
-                  itemCount: _parkingLots.length,
+                  itemCount: _displayedLots.length,
                   itemBuilder: (context, index) {
-                    final lot = _parkingLots[index];
+                    final lot = _displayedLots[index];
                     final distance = lot['exact_distance_km'] ?? (lot['distance_meters'] != null
                         ? (lot['distance_meters'] as num).toDouble() / 1000
                         : 0.0);

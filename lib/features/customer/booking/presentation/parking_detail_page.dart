@@ -249,10 +249,12 @@ class _ParkingDetailPageState extends State<ParkingDetailPage> with SingleTicker
         setState(() {
           List<Map<String, dynamic>> fetched = [];
           if (response.isNotEmpty) {
-            fetched = (response as List).map((e) => {
-              'time': e['duration_type'],
-              'price': '${(e['price'] as num).toInt()}đ',
-              'value': (e['price'] as num).toInt(),
+            fetched = (response as List).map((e) {
+              return <String, dynamic>{
+                'time': e['duration_type'],
+                'price': '${(e['price'] as num).toInt()}đ',
+                'value': (e['price'] as num).toInt(),
+              };
             }).toList();
           }
           _pricingList = _processPrices(fetched);

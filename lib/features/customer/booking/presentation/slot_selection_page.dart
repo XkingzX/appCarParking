@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:baidoxe/core/theme.dart';
+import 'package:baidoxe/model/slot_model.dart';
+import 'package:baidoxe/services/supabase_service.dart';
 import 'payment_page.dart';
 
 class SlotSelectionPage extends StatefulWidget {
@@ -18,17 +20,32 @@ class SlotSelectionPage extends StatefulWidget {
 }
 
 class _SlotSelectionPageState extends State<SlotSelectionPage> {
-  int? selectedSlot;
-  int _totalRows = 8; // 16 slots initially
-  bool _isLoading = false;
+  final SupabaseService _service = SupabaseService();
   final ScrollController _scrollController = ScrollController();
 
-  final List<int> _occupiedSlots = [2, 5, 8, 11, 14]; // Mock data
+  SlotModel? _selectedSlot;
+  List<SlotModel> _slots = [];
+  
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMoreData = true;
+  
+  String _selectedZone = 'A';
+  final int _limit = 20;
+  int _offset = 0;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
+    _fetchSlots(isRefresh: true);
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        if (!_isLoadingMore && _hasMoreData) {
+          _fetchSlots(isRefresh: false);
+        }
+      }
+    });
   }
 
   @override
@@ -37,33 +54,58 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 50) {
-      _loadMoreSlots();
+  Future<void> _fetchSlots({required bool isRefresh}) async {
+    if (isRefresh) {
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _offset = 0;
+          _hasMoreData = true;
+          _slots.clear();
+          _selectedSlot = null;
+        });
+      }
+    } else {
+      if (mounted) setState(() => _isLoadingMore = true);
+    }
+
+    try {
+      final parkingLotId = widget.parkingLot['id'];
+      final response = await _service.getSlotsPaginated(
+        parkingLotId,
+        _selectedZone,
+        _offset,
+        _limit,
+      );
+
+      final newSlots = response.map((e) => SlotModel.fromJson(e)).toList();
+
+      if (mounted) {
+        setState(() {
+          if (isRefresh) {
+            _slots = newSlots;
+          } else {
+            _slots.addAll(newSlots);
+          }
+          
+          _offset += newSlots.length;
+          _hasMoreData = newSlots.length == _limit;
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching slots: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
     }
   }
 
-  Future<void> _loadMoreSlots() async {
-    if (_isLoading || _totalRows >= 24) return; // limit to 48 slots max for demo
-    setState(() {
-      _isLoading = true;
-    });
-    
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-    
-    if (mounted) {
-      setState(() {
-        _totalRows += 4; // load 8 more slots
-        _isLoading = false;
-      });
-    }
-  }
-
-  String _getSlotName(int index, bool isLeft) {
-    String prefix = isLeft ? 'A' : 'B';
-    return '$prefix${index + 1}';
-  }
+  int get _availableCount => _slots.where((s) => s.isAvailable).length;
 
   @override
   Widget build(BuildContext context) {
@@ -75,9 +117,9 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
       ),
       body: Column(
         children: [
-          // Tabs
+          // Zone tabs
           _buildZoneTabs(),
-          
+
           // Legends
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24),
@@ -90,77 +132,123 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
               ],
             ),
           ),
-          
-          // Parking Layout
+
+          // Available count
+          if (!_isLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: AppTheme.accentBlue),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Còn $_availableCount chỗ trống (khu $_selectedZone)',
+                    style: const TextStyle(
+                      color: AppTheme.accentBlue,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+
+          // Parking Layout (2D Scrollable)
           Expanded(
             child: Stack(
               children: [
-                ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.only(bottom: 100, top: 16), // space for ENTRY text
-                  itemCount: _totalRows + 1, // +1 for loading indicator
-                  itemBuilder: (context, rowIndex) {
-                    if (rowIndex == _totalRows) {
-                      return _isLoading 
-                          ? const Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: Center(child: CircularProgressIndicator()),
-                            )
-                          : const SizedBox(height: 40);
-                    }
-                    return _buildParkingRow(rowIndex);
-                  },
-                ),
-                
-                // Entry Text sticky at bottom of list area
-                Positioned(
-                  bottom: 16,
-                  left: 0,
-                  right: 0,
-                  child: Column(
-                    children: [
-                      Icon(Icons.keyboard_arrow_up, color: Colors.green.shade600),
-                      Text(
-                        'ENTRY',
-                        style: TextStyle(
-                          color: Colors.green.shade600,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _slots.isEmpty
+                        ? Center(
+                            child: Text(
+                              'Không có slot trong khu $_selectedZone',
+                              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color),
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: () => _fetchSlots(isRefresh: true),
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.only(bottom: 100, top: 16),
+                              itemCount: (_slots.length / 2).ceil() + (_isLoadingMore ? 1 : 0),
+                              itemBuilder: (context, rowIndex) {
+                                if (rowIndex >= (_slots.length / 2).ceil()) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: Center(child: CircularProgressIndicator()),
+                                  );
+                                }
+                                return _buildParkingRow(rowIndex);
+                              },
+                            ),
+                          ),
+
+                // Entry Text
+                if (!_isLoading && _slots.isNotEmpty)
+                  Positioned(
+                    bottom: 16,
+                    left: 0,
+                    right: 0,
+                    child: Column(
+                      children: [
+                        Icon(Icons.keyboard_arrow_up, color: Colors.green.shade600),
+                        Text(
+                          'ENTRY',
+                          style: TextStyle(
+                            color: Colors.green.shade600,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),
-          
+
           // Bottom Book Button
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.1), blurRadius: 10, offset: const Offset(0, -5))],
+              borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(
+                        Theme.of(context).brightness == Brightness.dark
+                            ? 0.3
+                            : 0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5))
+              ],
             ),
             child: ElevatedButton(
-              onPressed: selectedSlot != null
+              onPressed: _selectedSlot != null
                   ? () {
                       Get.to(() => PaymentPage(
-                        parkingLot: widget.parkingLot,
-                        selectedPricing: widget.selectedPricing,
-                        selectedSlotName: _getSlotName(
-                            selectedSlot!,
-                            selectedSlot! % 2 == 0 // left is even index (0,2,4) based on logic below
-                        ),
-                      ));
+                            parkingLot: widget.parkingLot,
+                            selectedPricing: widget.selectedPricing,
+                            selectedSlotName: _selectedSlot!.slotName,
+                            selectedSlotId: _selectedSlot!.id,
+                          ));
                     }
                   : null,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 56),
-                backgroundColor: selectedSlot != null ? AppTheme.primaryBlue : Colors.grey.shade400,
+                backgroundColor: _selectedSlot != null
+                    ? AppTheme.primaryBlue
+                    : Colors.grey.shade400,
               ),
-              child: const Text('ĐẶT CHỖ', style: TextStyle(fontSize: 16, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
+              child: const Text('ĐẶT CHỖ',
+                  style: TextStyle(
+                      fontSize: 16,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -169,63 +257,81 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
   }
 
   Widget _buildZoneTabs() {
+    // Tạm thời hiển thị 2 khu A, B
+    final zones = ['A', 'B'];
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildTabItem(context, 'Khu A', true),
-          _buildTabItem(context, 'Khu B', false),
-          _buildTabItem(context, 'Khu C', false),
-          _buildTabItem(context, 'Khu VIP', false),
-        ],
+        children: zones
+            .map((zone) => _buildTabItem(context, 'Khu $zone', _selectedZone == zone, zone))
+            .toList(),
       ),
     );
   }
 
-  Widget _buildTabItem(BuildContext context, String text, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: isSelected ? AppTheme.accentBlue : Colors.transparent,
-            width: 3,
+  Widget _buildTabItem(BuildContext context, String text, bool isSelected, String zone) {
+    return GestureDetector(
+      onTap: () {
+        if (_selectedZone != zone) {
+          setState(() {
+            _selectedZone = zone;
+          });
+          _fetchSlots(isRefresh: true);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isSelected ? AppTheme.accentBlue : Colors.transparent,
+              width: 3,
+            ),
           ),
         ),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: isSelected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).textTheme.bodySmall?.color,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isSelected
+                ? Theme.of(context).colorScheme.onSurface
+                : Theme.of(context).textTheme.bodySmall?.color,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildParkingRow(int rowIndex) {
-    int leftSlotIndex = rowIndex * 2;
-    int rightSlotIndex = rowIndex * 2 + 1;
+    final leftIndex = rowIndex * 2;
+    final rightIndex = rowIndex * 2 + 1;
+
+    final leftSlot = leftIndex < _slots.length ? _slots[leftIndex] : null;
+    final rightSlot = rightIndex < _slots.length ? _slots[rightIndex] : null;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Left Slot (Row A)
-          _buildSlot(context, leftSlotIndex, _getSlotName(leftSlotIndex, true), isLeft: true),
-          
+          // Left slot
+          if (leftSlot != null)
+            _buildSlot(context, leftSlot, isLeft: true)
+          else
+            const SizedBox(width: 100, height: 60),
+
           // Center Pathway
           Container(
             width: 80,
-            height: 60, // Match slot height roughly
+            height: 60,
             alignment: Alignment.center,
-            child: rowIndex == 2 // Just show text in the middle somewhere
+            child: rowIndex == 1
                 ? RotatedBox(
                     quarterTurns: 3,
                     child: Text(
-                      '4 SLOTS FREE',
+                      '$_availableCount SLOTS FREE',
                       style: TextStyle(
                         color: Colors.grey.shade400,
                         fontWeight: FontWeight.w900,
@@ -239,23 +345,26 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
                     painter: DashedLinePainter(),
                   ),
           ),
-          
-          // Right Slot (Row B)
-          _buildSlot(context, rightSlotIndex, _getSlotName(rightSlotIndex, false), isLeft: false),
+
+          // Right slot
+          if (rightSlot != null)
+            _buildSlot(context, rightSlot, isLeft: false)
+          else
+            const SizedBox(width: 100, height: 60),
         ],
       ),
     );
   }
 
-  Widget _buildSlot(BuildContext context, int index, String label, {required bool isLeft}) {
-    bool isOccupied = _occupiedSlots.contains(index);
-    bool isSelected = selectedSlot == index;
+  Widget _buildSlot(BuildContext context, SlotModel slot, {required bool isLeft}) {
+    final isOccupied = !slot.isAvailable;
+    final isSelected = _selectedSlot?.id == slot.id;
 
     return GestureDetector(
       onTap: () {
         if (!isOccupied) {
           setState(() {
-            selectedSlot = index;
+            _selectedSlot = slot;
           });
         }
       },
@@ -263,7 +372,11 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
         width: 100,
         height: 60,
         decoration: BoxDecoration(
-          color: isOccupied ? (Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade200) : (isSelected ? AppTheme.accentBlue : Theme.of(context).cardColor),
+          color: isOccupied
+              ? (Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey.shade800
+                  : Colors.grey.shade300)
+              : (isSelected ? AppTheme.accentBlue : Theme.of(context).cardColor),
           border: Border.all(
             color: isSelected ? AppTheme.accentBlue : Colors.grey.withOpacity(0.3),
             width: 1.5,
@@ -282,25 +395,29 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
                   bottomLeft: Radius.circular(4),
                 ),
           boxShadow: isSelected
-              ? [BoxShadow(color: AppTheme.accentBlue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+              ? [
+                  BoxShadow(
+                      color: AppTheme.accentBlue.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4))
+                ]
               : null,
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
             if (isOccupied)
-              // Car Top View
               RotatedBox(
-                quarterTurns: isLeft ? 1 : 3, // point inwards or outwards
+                quarterTurns: isLeft ? 1 : 3,
                 child: Icon(
                   Icons.directions_car,
-                  color: AppTheme.primaryBlue,
+                  color: Colors.grey.shade600,
                   size: 40,
                 ),
               )
             else
               Text(
-                label,
+                slot.slotName,
                 style: TextStyle(
                   color: isSelected ? Colors.white : AppTheme.accentBlue,
                   fontWeight: FontWeight.bold,
@@ -325,9 +442,7 @@ class _SlotSelectionPageState extends State<SlotSelectionPage> {
             borderRadius: BorderRadius.circular(6),
           ),
           alignment: Alignment.center,
-          child: isOccupied 
-            ? Icon(Icons.directions_car, size: 16, color: AppTheme.primaryBlue)
-            : null,
+          child: isOccupied ? Icon(Icons.directions_car, size: 16, color: Colors.grey.shade600) : null,
         ),
         const SizedBox(width: 8),
         Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),

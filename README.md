@@ -28,7 +28,7 @@
 ## ✨ Tính Năng Nổi Bật
 
 - **🔒 Xác Thực An Toàn:** Tích hợp luồng xác thực đa nền tảng với các tiêu chuẩn bảo mật khắt khe.
-- **📍 Quản Lý Vị Trí Thời Gian Thực:** Tích hợp sâu với Google Maps API giúp theo dõi và quản lý các bãi đỗ xe với độ chính xác cao.
+- **📍 Quản Lý Vị Trí Thời Gian Thực:** Tích hợp sâu với OpenStreetMap mã nguồn mở giúp theo dõi và quản lý các bãi đỗ xe với độ chính xác cao.
 - **⭐ Lưu & Yêu Thích:** Hỗ trợ người dùng đánh dấu và truy xuất nhanh các địa điểm đỗ xe thường xuyên sử dụng.
 - **🗺️ Điều Hướng Thông Minh:** Hỗ trợ chỉ đường chi tiết (turn-by-turn) và hướng dẫn thời gian thực đến điểm đến.
 - **🔍 Tìm Kiếm & Lọc Nâng Cao:** Tích hợp bộ máy tìm kiếm hiệu năng cao cùng các tùy chọn lọc dữ liệu linh hoạt.
@@ -40,11 +40,10 @@
 Dự án áp dụng các công nghệ hiện đại nhằm đảm bảo hiệu năng, khả năng bảo trì và mở rộng hệ thống:
 
 *   **Frontend Framework:** Flutter (Dart)
-*   **State Management:** Provider / Riverpod / BLoC *(tuỳ chỉnh theo module)*
+*   **State Management:** BLoC 
 *   **Backend & Authentication:** Firebase & Supabase
-*   **Cơ Sở Dữ Liệu Cục Bộ (Local Storage):** SQLite
-*   **Bản Đồ & Vị Trí:** Google Maps API
-*   **Giao Tiếp Mạng:** REST APIs
+*   **Cơ Sở Dữ Liệu Cục Bộ (Local Storage):** Postgresql Supabase
+*   **Bản Đồ & Vị Trí:** OpenStreetMap (opensource)
 
 ## 📂 Kiến Trúc & Cấu Trúc Thư Mục
 
@@ -111,21 +110,19 @@ Thực hiện các bước sau để thiết lập môi trường phát triển 
 
 ## 🤝 Đóng Góp Ý Kiến
 
-Mọi đóng góp, báo cáo lỗi (issues), và đề xuất tính năng đều được chào đón. Vui lòng tham khảo [issues page](https://github.com/yourusername/appCarParking/issues) trước khi tiến hành đóng góp.
+Mọi đóng góp, báo cáo lỗi (issues), và đề xuất tính năng đều được chào đón. Vui lòng tham khảo [issues page](https://github.com/XkingzX/appCarParking/issues) trước khi tiến hành đóng góp.
 
 ## 📝 Giấy Phép (License)
 
 Dự án được phân phối dưới giấy phép MIT. Xem `LICENSE` để biết thêm chi tiết.
 
-## 👤 Tác Giả
+## 👤 Tác Giả: **Ngô Tiến Tới**
 
-**Tên Của Bạn**
-
-- 💼 LinkedIn: [your-linkedin-profile](#)
-- 🐙 GitHub: [@yourusername](https://github.com/yourusername)
-- ✉️ Email: your.email@example.com
+- 💼 LinkedIn: [Ngô Tiến Tới](https://www.linkedin.com/in/ngotientoi/)
+- 🐙 GitHub: [@Xk1ngzX](https://github.com/XkingzX)
+- ✉️ Email: ngotientoi21@gmail.com
 
 ---
 <div align="center">
-  <sub>Phát triển bằng ❤️ với Flutter.</sub>
+  <sub>Phát triển bằng cả trái tim, mong người xem sẽ thích nó ❤️.</sub>
 </div>

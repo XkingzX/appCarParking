@@ -40,11 +40,10 @@
 Our architecture leverages a carefully curated selection of modern technologies to ensure performance, maintainability, and scalability:
 
 *   **Frontend Framework:** Flutter (Dart)
-*   **State Management:** Provider / Riverpod / BLoC *(implementation specific)*
+*   **State Management:** BLoC
 *   **Backend & Authentication:** Firebase & Supabase
-*   **Local Storage:** SQLite
-*   **Mapping & Geolocation:** Google Maps API
-*   **Network Communications:** REST APIs
+*   **Local Storage:** Postgresql Supabase
+*   **Mapping & Geolocation:** OpenStreetMap
 
 ## 📂 Architecture & Folder Structure
 
@@ -111,21 +110,19 @@ Follow these instructions to set up the project locally for development and test
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome. Feel free to check the [issues page](https://github.com/yourusername/appCarParking/issues) if you want to contribute.
+Contributions, issues, and feature requests are welcome. Feel free to check the [issues page](https://github.com/XkingzX/appCarParking/issues) if you want to contribute.
 
 ## 📝 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
-## 👤 Author
+## 👤 Author: **Ngo Tien Toi**
 
-**Your Name**
-
-- 💼 LinkedIn: [your-linkedin-profile](#)
-- 🐙 GitHub: [@yourusername](https://github.com/yourusername)
-- ✉️ Email: your.email@example.com
+- 💼 LinkedIn: [Ngô Tiến Tới](https://www.linkedin.com/in/ngotientoi/)
+- 🐙 GitHub: [@Xk1ngzX](https://github.com/XkingzX)
+- ✉️ Email: ngotientoi21@gmail.com
 
 ---
 <div align="center">
-  <sub>Built with ❤️ using Flutter.</sub>
+  <sub>Developed with all my heart, I hope viewers will enjoy it ❤️.</sub>
 </div>

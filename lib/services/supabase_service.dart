@@ -1,9 +1,12 @@
 // services/supabase_service.dart
+import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
 class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;
+
+  // ==================== PROFILES ====================
 
   // Lấy thông tin user profile
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
@@ -73,6 +76,8 @@ class SupabaseService {
     }
   }
 
+  // ==================== PARKING LOTS ====================
+
   // Lấy danh sách bãi đỗ xe
   Future<List<Map<String, dynamic>>> getParkingLots() async {
     try {
@@ -90,6 +95,49 @@ class SupabaseService {
       return [];
     }
   }
+
+  // ==================== PARKING PRICES ====================
+
+  // Lấy giá đỗ xe theo bãi
+  Future<List<Map<String, dynamic>>> getParkingPrices(String parkingLotId) async {
+    try {
+      debugPrint('💰 [SUPABASE SERVICE] Đang lấy giá cho bãi: $parkingLotId');
+
+      final response = await _client
+          .from('parking_prices')
+          .select()
+          .eq('parking_lot_id', parkingLotId)
+          .order('price');
+
+      debugPrint('✅ [SUPABASE SERVICE] Lấy được ${response.length} mức giá');
+      return response;
+    } catch (e) {
+      debugPrint('❌ [SUPABASE SERVICE] Lỗi khi lấy giá: $e');
+      return [];
+    }
+  }
+
+  // Lấy giá theo bãi đỗ và loại thời gian
+  Future<double?> getPriceByDurationType(String parkingLotId, String durationType) async {
+    try {
+      final response = await _client
+          .from('parking_prices')
+          .select('price')
+          .eq('parking_lot_id', parkingLotId)
+          .eq('duration_type', durationType)
+          .maybeSingle();
+
+      if (response != null) {
+        return (response['price'] as num?)?.toDouble();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ [SUPABASE SERVICE] Lỗi khi lấy giá theo loại: $e');
+      return null;
+    }
+  }
+
+  // ==================== SLOTS ====================
 
   // Lấy danh sách slot theo bãi đỗ
   Future<List<Map<String, dynamic>>> getSlotsByParkingLot(String parkingLotId) async {
@@ -109,6 +157,138 @@ class SupabaseService {
       return [];
     }
   }
+
+  // Lấy danh sách slot trống theo bãi đỗ
+  Future<List<Map<String, dynamic>>> getAvailableSlots(String parkingLotId) async {
+    try {
+      debugPrint('🅿️ [SUPABASE SERVICE] Đang lấy slot trống cho bãi: $parkingLotId');
+
+      final response = await _client
+          .from('slots')
+          .select()
+          .eq('parking_lot_id', parkingLotId)
+          .eq('status', 'available')
+          .order('slot_name');
+
+      debugPrint('✅ [SUPABASE SERVICE] Tìm thấy ${response.length} slot trống');
+      return response;
+    } catch (e) {
+      debugPrint('❌ [SUPABASE SERVICE] Lỗi khi lấy slot trống: $e');
+      return [];
+    }
+  }
+
+  // ==================== GUARD METHODS ====================
+
+  // Lấy thông tin bãi đỗ mà bảo vệ được phân công
+  Future<Map<String, dynamic>?> getGuardAssignment(String guardId) async {
+    try {
+      debugPrint('🛡️ [SUPABASE SERVICE] Lấy phân công cho Guard: $guardId');
+      final response = await _client
+          .from('guard_assignments')
+          .select('parking_lot_id, parking_lots(name)')
+          .eq('guard_id', guardId)
+          .maybeSingle();
+
+      if (response != null) {
+        return {
+          'parking_lot_id': response['parking_lot_id'],
+          'parking_lot_name': response['parking_lots']['name'],
+        };
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ [SUPABASE SERVICE] Lỗi lấy phân công Guard: $e');
+      return null;
+    }
+  }
+
+  // Lấy thống kê số lượng xe trong bãi
+  Future<Map<String, int>> getGuardParkingStats(String parkingLotId) async {
+    try {
+      final response = await _client
+          .from('slots')
+          .select('status')
+          .eq('parking_lot_id', parkingLotId);
+
+      int total = response.length;
+      int occupied = response.where((s) => s['status'] == 'occupied' || s['status'] == 'reserved').length;
+      int available = response.where((s) => s['status'] == 'available').length;
+
+      return {
+        'total': total,
+        'occupied': occupied,
+        'available': available,
+      };
+    } catch (e) {
+      debugPrint('❌ [SUPABASE SERVICE] Lỗi lấy thống kê bãi đỗ: $e');
+      return {'total': 0, 'occupied': 0, 'available': 0};
+    }
+  }
+  // Lấy danh sách slot kèm thông tin booking cho Guard
+  Future<List<Map<String, dynamic>>> getGuardSlotStatus(String parkingLotId) async {
+    try {
+      debugPrint('🛡️ [SUPABASE SERVICE] Đang lấy trạng thái slot cho Guard (Bãi: $parkingLotId)');
+
+      // Query slots and left join active bookings
+      final response = await _client
+          .from('slots')
+          .select('''
+            *,
+            bookings!bookings_slot_id_fkey (
+              id, start_time, duration, status,
+              vehicles!bookings_vehicle_id_fkey (license_plate)
+            )
+          ''')
+          .eq('parking_lot_id', parkingLotId)
+          .order('slot_name');
+          
+      // Lọc ra booking active ở phía client hoặc có thể xử lý ở backend nếu complex
+      final slots = List<Map<String, dynamic>>.from(response);
+      for (var slot in slots) {
+        if (slot['bookings'] != null) {
+          final bookings = List<Map<String, dynamic>>.from(slot['bookings']);
+          // Lấy booking đang confirmed
+          final activeBooking = bookings.where((b) => b['status'] == 'confirmed').toList();
+          slot['active_booking'] = activeBooking.isNotEmpty ? activeBooking.first : null;
+        }
+      }
+
+      debugPrint('✅ [SUPABASE SERVICE] Lấy được ${slots.length} slot cho Guard');
+      return slots;
+    } catch (e) {
+      debugPrint('❌ [SUPABASE SERVICE] Lỗi lấy thông tin slot Guard: $e');
+      return [];
+    }
+  }
+
+  // Lấy danh sách slot phân trang (Lazy Loading)
+  Future<List<Map<String, dynamic>>> getSlotsPaginated(String parkingLotId, String zone, int offset, int limit) async {
+    try {
+      debugPrint('🅿️ [SUPABASE SERVICE] Đang tải slots phân trang: Bãi $parkingLotId, Khu $zone (offset: $offset)');
+
+      final query = _client
+          .from('slots')
+          .select()
+          .eq('parking_lot_id', parkingLotId);
+          
+      if (zone.isNotEmpty && zone != 'All') {
+        query.eq('zone', zone);
+      }
+
+      final response = await query
+          .order('slot_name')
+          .range(offset, offset + limit - 1);
+
+      debugPrint('✅ [SUPABASE SERVICE] Tải thêm được ${response.length} slots');
+      return response;
+    } catch (e) {
+      debugPrint('❌ [SUPABASE SERVICE] Lỗi tải slots phân trang: $e');
+      return [];
+    }
+  }
+
+  // ==================== VEHICLES ====================
 
   // Lấy danh sách xe của user
   Future<List<Map<String, dynamic>>> getUserVehicles(String userId) async {
@@ -142,14 +322,70 @@ class SupabaseService {
     }
   }
 
+  // ==================== BOOKINGS ====================
+
+  /// Tạo ticket number unique
+  String _generateTicketNumber() {
+    final now = DateTime.now();
+    final random = Random().nextInt(9999).toString().padLeft(4, '0');
+    return 'PKG-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}-$random';
+  }
+
+  /// Chuyển đổi duration text thành PostgreSQL interval format
+  /// VD: "1 Giờ" → "1 hours", "2 Giờ" → "2 hours", "Qua đêm" → "12 hours"
+  String _convertDurationToInterval(String durationText) {
+    final lower = durationText.toLowerCase().trim();
+
+    // Đã là format interval rồi
+    if (lower.contains('hours') || lower.contains('days') || lower.contains('months')) {
+      return lower;
+    }
+
+    // Parse "X Giờ" format
+    final hoursRegex = RegExp(r'(\d+)\s*giờ', caseSensitive: false);
+    final hoursMatch = hoursRegex.firstMatch(lower);
+    if (hoursMatch != null) {
+      return '${hoursMatch.group(1)} hours';
+    }
+
+    // Special cases
+    if (lower.contains('qua đêm')) return '12 hours';
+    if (lower.contains('cả ngày')) return '1 days';
+    if (lower.contains('tuần')) return '7 days';
+    if (lower.contains('tháng')) return '30 days';
+
+    return '1 hours'; // default
+  }
+
   // Tạo booking mới
-  Future<Map<String, dynamic>> createBooking(Map<String, dynamic> bookingData) async {
+  Future<Map<String, dynamic>> createBooking({
+    required String userId,
+    required String slotId,
+    String? vehicleId,
+    required String durationText,
+    required String paymentMethod,
+  }) async {
     try {
       debugPrint('📅 [SUPABASE SERVICE] Đang tạo booking mới...');
-      debugPrint('   - Slot ID: ${bookingData['slot_id']}');
-      debugPrint('   - Duration: ${bookingData['duration']} phút');
-      debugPrint('   - Amount: ${bookingData['amount']}đ');
+      debugPrint('   - Slot ID: $slotId');
+      debugPrint('   - Duration: $durationText');
+      debugPrint('   - Payment: $paymentMethod');
 
+      final ticketNumber = _generateTicketNumber();
+      final intervalDuration = _convertDurationToInterval(durationText);
+
+      final bookingData = {
+        'user_id': userId,
+        'slot_id': slotId,
+        'vehicle_id': vehicleId,
+        'start_time': DateTime.now().toIso8601String(),
+        'duration': intervalDuration,
+        'payment_method': paymentMethod,
+        'ticket_number': ticketNumber,
+        'status': 'confirmed',
+      };
+
+      // Insert booking - trigger handle_booking_slot_status sẽ tự update slot status
       final response = await _client
           .from('bookings')
           .insert(bookingData)
@@ -157,15 +393,7 @@ class SupabaseService {
           .single();
 
       debugPrint('✅ [SUPABASE SERVICE] Tạo booking thành công - ID: ${response['id']}');
-      debugPrint('   - Ticket Number: ${response['ticket_number']}');
-
-      // Cập nhật status của slot thành 'occupied'
-      await _client
-          .from('slots')
-          .update({'status': 'occupied'})
-          .eq('id', bookingData['slot_id']);
-
-      debugPrint('🔄 [SUPABASE SERVICE] Đã cập nhật status slot thành occupied');
+      debugPrint('   - Ticket: $ticketNumber');
 
       return response;
     } catch (e) {
@@ -174,56 +402,98 @@ class SupabaseService {
     }
   }
 
-  // Lấy booking active của user
+  // Lấy booking đang active (confirmed) của user
   Future<List<Map<String, dynamic>>> getActiveBookings(String userId) async {
     try {
       debugPrint('⏰ [SUPABASE SERVICE] Đang lấy booking active cho user: $userId');
 
-      final now = DateTime.now().toIso8601String();
-
       final response = await _client
           .from('bookings')
-          .select('*, slots(*), parking_lots(*)')
+          .select('''
+            *,
+            slots!bookings_slot_id_fkey (
+              id,
+              slot_name,
+              parking_lot_id,
+              status,
+              parking_lots (
+                id,
+                name,
+                location
+              )
+            ),
+            vehicles!bookings_vehicle_id_fkey (
+              id,
+              name,
+              license_plate,
+              type
+            )
+          ''')
           .eq('user_id', userId)
-          .gt('end_time', now)
-          .eq('status', 'active')
-          .order('start_time');
+          .eq('status', 'confirmed')
+          .order('start_time', ascending: false);
 
       debugPrint('✅ [SUPABASE SERVICE] Tìm thấy ${response.length} booking active');
-      return response;
+      return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       debugPrint('❌ [SUPABASE SERVICE] Lỗi khi lấy booking active: $e');
       return [];
     }
   }
 
-  // Gia hạn booking
-  Future<void> extendBooking(String bookingId, int additionalMinutes, int additionalAmount) async {
+  // Lấy lịch sử booking (completed, cancelled, expired) của user
+  Future<List<Map<String, dynamic>>> getBookingHistory(String userId) async {
     try {
-      debugPrint('⏱️ [SUPABASE SERVICE] Đang gia hạn booking: $bookingId');
-      debugPrint('   - Thêm $additionalMinutes phút');
-      debugPrint('   - Phí thêm: $additionalAmountđ');
+      debugPrint('📋 [SUPABASE SERVICE] Đang lấy lịch sử booking cho user: $userId');
 
-      // Lấy booking hiện tại
-      final booking = await _client
+      final response = await _client
           .from('bookings')
-          .select()
-          .eq('id', bookingId)
-          .single();
+          .select('''
+            *,
+            slots!bookings_slot_id_fkey (
+              id,
+              slot_name,
+              parking_lot_id,
+              status,
+              parking_lots (
+                id,
+                name,
+                location
+              )
+            ),
+            vehicles!bookings_vehicle_id_fkey (
+              id,
+              name,
+              license_plate,
+              type
+            )
+          ''')
+          .eq('user_id', userId)
+          .inFilter('status', ['completed', 'cancelled', 'expired'])
+          .order('created_at', ascending: false);
 
-      final currentEndTime = DateTime.parse(booking['end_time']);
-      final newEndTime = currentEndTime.add(Duration(minutes: additionalMinutes));
-
-      // Cập nhật booking
-      await _client.from('bookings').update({
-        'end_time': newEndTime.toIso8601String(),
-        'total_amount': (booking['total_amount'] as int) + additionalAmount,
-      }).eq('id', bookingId);
-
-      debugPrint('✅ [SUPABASE SERVICE] Gia hạn thành công');
-      debugPrint('   - Thời gian kết thúc mới: $newEndTime');
+      debugPrint('✅ [SUPABASE SERVICE] Tìm thấy ${response.length} booking lịch sử');
+      return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      debugPrint('❌ [SUPABASE SERVICE] Lỗi khi gia hạn booking: $e');
+      debugPrint('❌ [SUPABASE SERVICE] Lỗi khi lấy lịch sử booking: $e');
+      return [];
+    }
+  }
+
+  // Hủy booking
+  Future<void> cancelBooking(String bookingId) async {
+    try {
+      debugPrint('❌ [SUPABASE SERVICE] Đang hủy booking: $bookingId');
+
+      await _client
+          .from('bookings')
+          .update({'status': 'cancelled'})
+          .eq('id', bookingId);
+
+      // Trigger handle_booking_slot_status sẽ tự update slot status về available
+      debugPrint('✅ [SUPABASE SERVICE] Hủy booking thành công');
+    } catch (e) {
+      debugPrint('❌ [SUPABASE SERVICE] Lỗi khi hủy booking: $e');
       rethrow;
     }
   }
@@ -235,9 +505,22 @@ class SupabaseService {
 
       final booking = await _client
           .from('bookings')
-          .select('*, slots(*), users(*)')
+          .select('''
+            *,
+            slots!bookings_slot_id_fkey (
+              id,
+              slot_name,
+              parking_lot_id,
+              parking_lots (name)
+            ),
+            vehicles!bookings_vehicle_id_fkey (
+              id,
+              name,
+              license_plate
+            )
+          ''')
           .eq('ticket_number', ticketNumber)
-          .eq('status', 'active')
+          .eq('status', 'confirmed')
           .maybeSingle();
 
       if (booking == null) {
@@ -245,14 +528,7 @@ class SupabaseService {
         throw Exception('Ticket không hợp lệ');
       }
 
-      // Cập nhật check-in time
-      await _client.from('bookings').update({
-        'check_in_time': DateTime.now().toIso8601String(),
-        'status': 'checked_in',
-      }).eq('id', booking['id']);
-
-      debugPrint('✅ [SUPABASE SERVICE] Check-in thành công cho xe: ${booking['slots']['slot_name']}');
-
+      debugPrint('✅ [SUPABASE SERVICE] Check-in thành công');
       return booking;
     } catch (e) {
       debugPrint('❌ [SUPABASE SERVICE] Lỗi khi check-in: $e');
@@ -260,29 +536,15 @@ class SupabaseService {
     }
   }
 
-  // Check-out (cho Guard)
+  // Check-out - đánh dấu completed (cho Guard)
   Future<void> checkOut(String bookingId) async {
     try {
       debugPrint('🚪 [SUPABASE SERVICE] Đang check-out cho booking: $bookingId');
 
-      // Cập nhật booking
+      // Cập nhật booking status → trigger sẽ tự free slot
       await _client.from('bookings').update({
-        'check_out_time': DateTime.now().toIso8601String(),
         'status': 'completed',
       }).eq('id', bookingId);
-
-      // Lấy slot_id từ booking
-      final booking = await _client
-          .from('bookings')
-          .select('slot_id')
-          .eq('id', bookingId)
-          .single();
-
-      // Cập nhật status slot thành available
-      await _client
-          .from('slots')
-          .update({'status': 'available'})
-          .eq('id', booking['slot_id']);
 
       debugPrint('✅ [SUPABASE SERVICE] Check-out thành công');
     } catch (e) {
@@ -290,6 +552,8 @@ class SupabaseService {
       rethrow;
     }
   }
+
+  // ==================== REALTIME ====================
 
   // Subscribe vào realtime cho slots
   void subscribeToSlots(String parkingLotId, Function(List<Map<String, dynamic>>) onUpdate) {

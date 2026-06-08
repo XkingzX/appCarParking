@@ -4,14 +4,22 @@ import '../../booking/presentation/booking_page.dart';
 import '../../account/presentation/account_page.dart';
 
 class CustomerHomePage extends StatefulWidget {
-  const CustomerHomePage({Key? key}) : super(key: key);
+  final int initialIndex;
+  
+  const CustomerHomePage({Key? key, this.initialIndex = 0}) : super(key: key);
 
   @override
   State<CustomerHomePage> createState() => _CustomerHomePageState();
 }
 
 class _CustomerHomePageState extends State<CustomerHomePage> {
-  int _currentIndex = 0;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
 
   final List<Widget> _pages = [
     const CustomerMapPage(),

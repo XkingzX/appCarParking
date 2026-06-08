@@ -46,10 +46,17 @@ class _LoginPageState extends State<LoginPage> {
             debugPrint('✅ [LOGIN SUCCESS] User: ${state.user.email}, Role: ${state.user.role}');
 
             // Chuyển hướng dựa trên role
-            if (state.user.role == 'guard') {
-              Get.offAll(() => const GuardHomePage());
-            } else {
-              Get.offAll(() => const CustomerHomePage());
+            switch (state.user.role) {
+              case 'admin':
+                Get.offAll(() => const GuardHomePage());
+                break;
+
+              case 'guard':
+                Get.offAll(() => const GuardHomePage());
+                break;
+
+              default:
+                Get.offAll(() => const CustomerHomePage());
             }
           } else if (state is AuthError) {
             // In log lỗi

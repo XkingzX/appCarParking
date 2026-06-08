@@ -60,7 +60,7 @@ class _RegisterPageContentState extends State<RegisterPageContent> {
             debugPrint('✅ [REGISTER SUCCESS] User: ${state.user.email}');
             Get.snackbar(
               'Đăng ký thành công 🎉',
-              'Chào mừng bạn đến với Gay Parking!',
+              'Chào mừng bạn đến với EggsySmart Parking!',
               backgroundColor: Colors.green,
               colorText: Colors.white,
               snackPosition: SnackPosition.BOTTOM,

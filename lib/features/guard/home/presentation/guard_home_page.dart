@@ -1,21 +1,94 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../scanner/presentation/scanner_page.dart';
+import 'guard_slot_dashboard.dart' as guard_slot_dashboard;
+import 'package:baidoxe/services/supabase_service.dart';
 
-class GuardHomePage extends StatelessWidget {
+class GuardHomePage extends StatefulWidget {
   const GuardHomePage({Key? key}) : super(key: key);
 
   @override
+  State<GuardHomePage> createState() => _GuardHomePageState();
+}
+
+class _GuardHomePageState extends State<GuardHomePage> {
+  final SupabaseService _service = SupabaseService();
+  bool _isLoading = true;
+  String? _parkingLotId;
+  String _parkingLotName = 'Bảng điều khiển';
+  int _totalSlots = 0;
+  int _occupiedSlots = 0;
+  int _availableSlots = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGuardData();
+  }
+
+  Future<void> _loadGuardData() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    final assignment = await _service.getGuardAssignment(userId);
+    if (assignment != null) {
+      _parkingLotId = assignment['parking_lot_id'];
+      _parkingLotName = assignment['parking_lot_name'] ?? 'Bãi đỗ xe';
+      
+      final stats = await _service.getGuardParkingStats(_parkingLotId!);
+      
+      if (mounted) {
+        setState(() {
+          _totalSlots = stats['total'] ?? 0;
+          _occupiedSlots = stats['occupied'] ?? 0;
+          _availableSlots = stats['available'] ?? 0;
+        });
+      }
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_parkingLotId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Bảng điều khiển')),
+        body: const Center(
+          child: Text('Tài khoản của bạn chưa được phân công bãi đỗ nào.', style: TextStyle(fontSize: 16)),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bảng điều khiển (Bảo vệ)'),
+        title: Text(_parkingLotName),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.refresh),
             onPressed: () {
-              // Xử lý đăng xuất
+              setState(() => _isLoading = true);
+              _loadGuardData();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await Supabase.instance.client.auth.signOut();
+              Get.offAllNamed('/login');
             },
           )
         ],
@@ -29,11 +102,11 @@ class GuardHomePage extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: _buildStatCard('Đang đỗ', '45/50', Colors.blue),
+                  child: _buildStatCard('Đang đỗ', '$_occupiedSlots/$_totalSlots', Colors.blue),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: _buildStatCard('Trống', '5', Colors.green),
+                  child: _buildStatCard('Trống', '$_availableSlots', Colors.green),
                 ),
               ],
             ),
@@ -68,11 +141,11 @@ class GuardHomePage extends StatelessWidget {
                   ),
                   _buildActionCard(
                     context,
-                    icon: Icons.search,
-                    title: 'Nhập Biển Số',
+                    icon: Icons.local_parking,
+                    title: 'Giám sát Bãi Đỗ',
                     color: Colors.purple,
                     onTap: () {
-                      // Mở popup nhập biển số
+                      Get.to(() => guard_slot_dashboard.GuardSlotDashboard(parkingLotId: _parkingLotId!));
                     },
                   ),
                   _buildActionCard(
@@ -98,39 +171,58 @@ class GuardHomePage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         children: [
-          Text(title, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(title, style: TextStyle(fontSize: 16, color: color, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(color: color, fontSize: 28, fontWeight: FontWeight.bold)),
+          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
     );
   }
 
-  Widget _buildActionCard(BuildContext context, {required IconData icon, required String title, required Color color, required VoidCallback onTap}) {
+  Widget _buildActionCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: color.withOpacity(0.1),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, size: 32, color: color),
             ),
-            const SizedBox(height: 16),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ),

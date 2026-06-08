@@ -19,6 +19,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
   String _fullName = 'Đang tải...';
   String _email = '';
   bool _isLoading = true;
+  String _role = '';
 
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
       if (mounted) {
         setState(() {
           _fullName = response['full_name'] ?? 'Chưa cập nhật tên';
+          _role = response['role'] ?? '';
           _isLoading = false;
         });
       }
@@ -247,6 +249,7 @@ class _CustomerAccountPageState extends State<CustomerAccountPage> {
                 Get.to(() => const SavedPlacesPage());
               }
             ),
+            if (_role == 'admin')
             _buildListTile(
               context,
               icon: Icons.local_parking_outlined, 

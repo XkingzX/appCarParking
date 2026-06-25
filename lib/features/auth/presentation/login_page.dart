@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 import '../../../../core/theme.dart';
@@ -48,7 +49,11 @@ class _LoginPageState extends State<LoginPage> {
             // Chuyển hướng dựa trên role
             switch (state.user.role) {
               case 'admin':
-                Get.offAll(() => const GuardHomePage());
+                Get.offAllNamed('/web-admin/admin-dashboard', arguments: {'role': 'admin'});
+                break;
+                
+              case 'parking_owner':
+                Get.offAllNamed('/web-admin/owner-dashboard', arguments: {'role': 'parking_owner'});
                 break;
 
               case 'guard':

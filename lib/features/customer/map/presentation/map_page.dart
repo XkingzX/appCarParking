@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../booking/presentation/parking_detail_page.dart';
+import 'package:baidoxe/model/traffic_simulation_model.dart';
 
 class CustomerMapPage extends StatefulWidget {
   const CustomerMapPage({Key? key}) : super(key: key);
@@ -25,6 +26,7 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
 
   bool _isLoadingLocation = true;
   List<Map<String, dynamic>> _parkingLots = [];
+  List<TrafficSimulationModel> _trafficSimulations = [];
 
   List<Map<String, dynamic>> get _displayedLots {
     final lots = _parkingLots.where((lot) {
@@ -58,6 +60,24 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
   void initState() {
     super.initState();
     _determinePosition();
+    _fetchTrafficSimulations();
+  }
+
+  Future<void> _fetchTrafficSimulations() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('traffic_simulations')
+          .select('*');
+      if (mounted) {
+        setState(() {
+          _trafficSimulations = (response as List)
+              .map((e) => TrafficSimulationModel.fromJson(e))
+              .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching traffic simulations: $e');
+    }
   }
 
   Future<void> _determinePosition() async {
@@ -585,6 +605,17 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
                       strokeWidth: 6.0,
                       color: Colors.blueAccent,
                     ),
+                  // Hiển thị các tuyến đường mô phỏng giao thông
+                  ..._trafficSimulations.map((sim) {
+                    return Polyline(
+                      points: [
+                        LatLng(sim.startLat, sim.startLng),
+                        LatLng(sim.endLat, sim.endLng),
+                      ],
+                      strokeWidth: 5.0,
+                      color: sim.statusColor.withOpacity(0.8),
+                    );
+                  }).toList(),
                 ],
               ),
             ],

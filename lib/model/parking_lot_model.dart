@@ -1,6 +1,8 @@
 // model/parking_lot_model.dart
 class ParkingLotModel {
   final String id;
+  final String? ownerId;
+  final String? ownerName;
   final String name;
   final String? location;
   final double latitude;
@@ -11,6 +13,8 @@ class ParkingLotModel {
 
   ParkingLotModel({
     required this.id,
+    this.ownerId,
+    this.ownerName,
     required this.name,
     this.location,
     required this.latitude,
@@ -23,6 +27,8 @@ class ParkingLotModel {
   factory ParkingLotModel.fromJson(Map<String, dynamic> json) {
     return ParkingLotModel(
       id: json['id'] ?? '',
+      ownerId: json['owner_id'],
+      ownerName: json['profiles']?['full_name'], // Giả sử khi query có JOIN với profiles
       name: json['name'] ?? '',
       location: json['location'],
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0,

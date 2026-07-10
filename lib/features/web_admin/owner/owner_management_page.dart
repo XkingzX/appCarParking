@@ -175,40 +175,42 @@ class _OwnerManagementPageState extends State<OwnerManagementPage> {
           const SizedBox(height: 16),
 
           if (_isLoading)
-            const Center(child: Padding(
+            const Expanded(child: Center(child: Padding(
               padding: EdgeInsets.all(40.0),
               child: CircularProgressIndicator(color: AppTheme.primaryBlue),
-            ))
+            )))
           else if (_owners.isEmpty)
-            const Center(child: Padding(
+            const Expanded(child: Center(child: Padding(
               padding: EdgeInsets.all(40.0),
               child: Text('Chưa có thông tin chủ bãi đỗ nào được đăng ký.', style: TextStyle(color: Colors.grey, fontSize: 16)),
-            ))
+            )))
           else
-            CustomDataTable(
-              columns: const ['Doanh nghiệp', 'Đại diện', 'Mã số thuế', 'Trạng thái', 'Hành động'],
-              rows: _owners.map((owner) {
-                Color statusColor;
-                if (owner.status == 'verified') statusColor = Colors.green;
-                else if (owner.status == 'rejected') statusColor = Colors.red;
-                else statusColor = Colors.orange;
+            Expanded(
+              child: CustomDataTable(
+                columns: const ['Doanh nghiệp', 'Đại diện', 'Mã số thuế', 'Trạng thái', 'Hành động'],
+                rows: _owners.map((owner) {
+                  Color statusColor;
+                  if (owner.status == 'verified') statusColor = Colors.green;
+                  else if (owner.status == 'rejected') statusColor = Colors.red;
+                  else statusColor = Colors.orange;
 
-                return [
-                  Text(owner.companyName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text('${owner.fullName}\n${owner.email}', style: const TextStyle(fontSize: 12)),
-                  Text(owner.taxNumber ?? 'N/A'),
-                  Chip(
-                    label: Text(owner.status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)),
-                    backgroundColor: statusColor.withOpacity(0.1),
-                    side: BorderSide(color: statusColor.withOpacity(0.2)),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.remove_red_eye_rounded, color: AppTheme.accentBlue),
-                    tooltip: 'Xem chi tiết & Phê duyệt',
-                    onPressed: () => _showOwnerDetails(owner),
-                  ),
-                ];
-              }).toList(),
+                  return [
+                    Text(owner.companyName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('${owner.fullName}\n${owner.email}', style: const TextStyle(fontSize: 12)),
+                    Text(owner.taxNumber ?? 'N/A'),
+                    Chip(
+                      label: Text(owner.status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                      backgroundColor: statusColor.withOpacity(0.1),
+                      side: BorderSide(color: statusColor.withOpacity(0.2)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.remove_red_eye_rounded, color: AppTheme.accentBlue),
+                      tooltip: 'Xem chi tiết & Phê duyệt',
+                      onPressed: () => _showOwnerDetails(owner),
+                    ),
+                  ];
+                }).toList(),
+              ),
             )
         ],
       ),

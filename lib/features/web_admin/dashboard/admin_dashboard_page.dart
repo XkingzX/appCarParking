@@ -41,12 +41,17 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       final ownersResponse = await supabase.from('profiles').select('id').eq('role', 'parking_owner');
       _totalOwners = ownersResponse.length;
 
-      // Fetch Total Bookings
-      final bookingsResponse = await supabase.from('bookings').select('id');
+      // Fetch Total Bookings and Revenue
+      final bookingsResponse = await supabase.from('bookings').select('id, total_amount').eq('payment_status', 'paid');
       _totalBookings = bookingsResponse.length;
 
-      // Calculate Fake Revenue for now (50,000 VND per booking)
-      _totalRevenue = _totalBookings * 50000.0;
+      double calculatedRevenue = 0;
+      for (var booking in bookingsResponse) {
+        if (booking['total_amount'] != null) {
+          calculatedRevenue += double.parse(booking['total_amount'].toString());
+        }
+      }
+      _totalRevenue = calculatedRevenue;
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -75,97 +80,99 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       currentRoute: '/web-admin/admin-dashboard',
       child: _isLoading 
         ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Tổng quan Hệ thống',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.textDark,
-                      letterSpacing: -0.5,
+        : SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Tổng quan Hệ thống',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textDark,
+                        letterSpacing: -0.5,
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded, color: AppTheme.accentBlue),
-                    onPressed: _fetchDashboardData,
-                    tooltip: 'Làm mới dữ liệu',
-                  )
-                ],
-              ),
-              const SizedBox(height: 24),
-              
-              // KPI Cards
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  int crossAxisCount = 4;
-                  if (constraints.maxWidth < 600) {
-                    crossAxisCount = 1;
-                  } else if (constraints.maxWidth < 1000) {
-                    crossAxisCount = 2;
-                  }
-                  
-                  return GridView.count(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 24,
-                    mainAxisSpacing: 24,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: constraints.maxWidth < 600 ? 2.5 : 1.6,
-                    children: [
-                      StatCard(
-                        title: 'Tổng doanh thu (Ước tính)',
-                        value: _formatCurrency(_totalRevenue),
-                        icon: Icons.account_balance_wallet_rounded,
-                        color: Colors.green,
-                        trend: 'Tăng trưởng',
-                        isUp: true,
-                      ),
-                      StatCard(
-                        title: 'Tổng số bãi đỗ',
-                        value: '$_totalParkings',
-                        icon: Icons.local_parking_rounded,
-                        color: AppTheme.accentBlue,
-                      ),
-                      StatCard(
-                        title: 'Chủ bãi đỗ',
-                        value: '$_totalOwners',
-                        icon: Icons.people_alt_rounded,
-                        color: Colors.orange,
-                      ),
-                      StatCard(
-                        title: 'Lượt đặt chỗ',
-                        value: '$_totalBookings',
-                        icon: Icons.book_online_rounded,
-                        color: Colors.purple,
-                      ),
-                    ],
-                  );
-                },
-              ),
-              
-              const SizedBox(height: 32),
-              
-              // Charts Section
-              const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: _RevenueChartWidget(),
-                  ),
-                  SizedBox(width: 24),
-                  Expanded(
-                    flex: 1,
-                    child: _OccupancyChartWidget(),
-                  ),
-                ],
-              )
-            ],
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded, color: AppTheme.accentBlue),
+                      onPressed: _fetchDashboardData,
+                      tooltip: 'Làm mới dữ liệu',
+                    )
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
+                // KPI Cards
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    int crossAxisCount = 4;
+                    if (constraints.maxWidth < 600) {
+                      crossAxisCount = 1;
+                    } else if (constraints.maxWidth < 1000) {
+                      crossAxisCount = 2;
+                    }
+                    
+                    return GridView.count(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 24,
+                      mainAxisSpacing: 24,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      childAspectRatio: constraints.maxWidth < 600 ? 2.5 : 1.6,
+                      children: [
+                        StatCard(
+                          title: 'Tổng doanh thu (Ước tính)',
+                          value: _formatCurrency(_totalRevenue),
+                          icon: Icons.account_balance_wallet_rounded,
+                          color: Colors.green,
+                          trend: 'Tăng trưởng',
+                          isUp: true,
+                        ),
+                        StatCard(
+                          title: 'Tổng số bãi đỗ',
+                          value: '$_totalParkings',
+                          icon: Icons.local_parking_rounded,
+                          color: AppTheme.accentBlue,
+                        ),
+                        StatCard(
+                          title: 'Chủ bãi đỗ',
+                          value: '$_totalOwners',
+                          icon: Icons.people_alt_rounded,
+                          color: Colors.orange,
+                        ),
+                        StatCard(
+                          title: 'Lượt đặt chỗ',
+                          value: '$_totalBookings',
+                          icon: Icons.book_online_rounded,
+                          color: Colors.purple,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Charts Section
+                const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: _RevenueChartWidget(),
+                    ),
+                    SizedBox(width: 24),
+                    Expanded(
+                      flex: 1,
+                      child: _OccupancyChartWidget(),
+                    ),
+                  ],
+                )
+              ],
+            ),
           ),
     );
   }

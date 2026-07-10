@@ -57,6 +57,8 @@ dependencies:
   path_provider: ^2.1.5
   fl_chart: ^0.70.0
   vector_math: ^2.1.4
+  pdf: ^3.11.3
+  printing: ^5.14.3
 
 dev_dependencies:
   flutter_test:

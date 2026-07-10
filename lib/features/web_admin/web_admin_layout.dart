@@ -88,7 +88,7 @@ class _WebAdminLayoutState extends State<WebAdminLayout> {
                 ),
                 // Child Content
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: widget.child,
                   ),

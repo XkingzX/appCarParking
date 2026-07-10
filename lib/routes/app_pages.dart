@@ -8,6 +8,8 @@ import '../features/web_admin/dashboard/owner_dashboard_page.dart';
 import '../features/web_admin/parking/parking_list_page.dart';
 import '../features/web_admin/parking/parking_detail_page.dart';
 import '../features/web_admin/parking/parking_form_page.dart';
+import '../features/web_admin/parking/slot_management_page.dart';
+import '../features/web_admin/user/user_management_page.dart';
 import '../features/web_admin/owner/owner_management_page.dart';
 import '../features/web_admin/booking/booking_management_page.dart';
 import '../features/web_admin/revenue/revenue_page.dart';
@@ -17,6 +19,7 @@ import '../features/web_admin/presentation/admin_verification_page.dart';
 import '../features/web_admin/web_admin_layout.dart';
 import '../features/web_admin/simulation/traffic_simulation_page.dart';
 import '../features/web_admin/simulation/traffic_simulation_form_page.dart';
+import '../features/guard/history/guard_booking_history_page.dart' as guard_booking_history_page;
 
 class AppPages {
   static const INITIAL = '/login';
@@ -58,6 +61,16 @@ class AppPages {
     GetPage(
       name: '/web-admin/parking/form',
       page: () => ParkingFormPage(role: _getRole()),
+      transition: Transition.noTransition,
+    ),
+    GetPage(
+      name: '/web-admin/parking/slots',
+      page: () => SlotManagementPage(role: _getRole()),
+      transition: Transition.noTransition,
+    ),
+    GetPage(
+      name: '/web-admin/users',
+      page: () => UserManagementPage(role: _getRole()),
       transition: Transition.noTransition,
     ),
     GetPage(
@@ -103,6 +116,11 @@ class AppPages {
         child: const AdminVerificationPage(),
       ),
       transition: Transition.noTransition,
+    ),
+    GetPage(
+      name: '/guard/booking-history',
+      page: () => const guard_booking_history_page.GuardBookingHistoryPage(),
+      transition: Transition.rightToLeft,
     ),
   ];
 }

@@ -100,6 +100,7 @@ class _SidebarState extends State<Sidebar> {
         _buildSectionTitle('QUẢN LÝ BÃI ĐỖ XE'),
         _SidebarItem(icon: Icons.local_parking_rounded, title: 'Danh sách bãi đỗ', route: '/web-admin/parking', isSelected: widget.currentRoute.startsWith('/web-admin/parking')),
         _SidebarItem(icon: Icons.people_alt_rounded, title: 'Chủ bãi đỗ', route: '/web-admin/owner', isSelected: widget.currentRoute.startsWith('/web-admin/owner')),
+        _SidebarItem(icon: Icons.manage_accounts_rounded, title: 'Tất cả người dùng', route: '/web-admin/users', isSelected: widget.currentRoute.startsWith('/web-admin/users')),
         
         _buildSectionTitle('NGƯỜI DÙNG & GIAO DỊCH'),
         _SidebarItem(icon: Icons.book_online_rounded, title: 'Đặt chỗ', route: '/web-admin/booking', isSelected: widget.currentRoute.startsWith('/web-admin/booking')),
@@ -195,7 +196,10 @@ class _SidebarItemState extends State<_SidebarItem> {
           ),
           onTap: () {
             if (!widget.isSelected) {
-              Get.offNamed(widget.route);
+              // Get the role from the parent Sidebar
+              final sidebarState = context.findAncestorWidgetOfExactType<Sidebar>();
+              final currentRole = sidebarState?.role ?? 'admin';
+              Get.offNamed(widget.route, arguments: {'role': currentRole});
             }
           },
         ),

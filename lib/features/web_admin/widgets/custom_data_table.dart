@@ -15,37 +15,51 @@ class CustomDataTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
+      height: double.infinity,
       decoration: BoxDecoration(
         color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            headingRowColor: MaterialStateProperty.all(AppTheme.primaryWhite),
-            dataRowHeight: 65,
-            headingTextStyle: const TextStyle(
-              color: AppTheme.textDark,
-              fontWeight: FontWeight.bold,
-            ),
-            columns: columns
-                .map((col) => DataColumn(label: Text(col)))
-                .toList(),
-            rows: rows
-                .map((row) => DataRow(
-                      cells: row.map((cell) => DataCell(cell)).toList(),
-                    ))
-                .toList(),
-          ),
+        borderRadius: BorderRadius.circular(20),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    headingRowColor: MaterialStateProperty.all(AppTheme.primaryWhite),
+                    dataRowHeight: 75,
+                    headingTextStyle: const TextStyle(
+                      color: AppTheme.textDark,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                    columnSpacing: 24,
+                    horizontalMargin: 24,
+                    columns: columns
+                        .map((col) => DataColumn(label: Text(col)))
+                        .toList(),
+                    rows: rows
+                        .map((row) => DataRow(
+                              cells: row.map((cell) => DataCell(cell)).toList(),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

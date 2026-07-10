@@ -11,6 +11,12 @@ class ParkingLotModel {
   final int totalReviews;
   final DateTime? createdAt;
 
+  final List<String> images;
+  final List<String> tags;
+  final int gracePeriodMinutes;
+  final bool isDynamicPricing;
+  final double peakMultiplier;
+
   ParkingLotModel({
     required this.id,
     this.ownerId,
@@ -22,6 +28,11 @@ class ParkingLotModel {
     this.avgRating = 0,
     this.totalReviews = 0,
     this.createdAt,
+    this.images = const [],
+    this.tags = const [],
+    this.gracePeriodMinutes = 15,
+    this.isDynamicPricing = false,
+    this.peakMultiplier = 1.5,
   });
 
   factory ParkingLotModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +49,11 @@ class ParkingLotModel {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
+      images: json['images'] != null ? List<String>.from(json['images']) : [],
+      tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
+      gracePeriodMinutes: (json['grace_period_minutes'] as num?)?.toInt() ?? 15,
+      isDynamicPricing: json['is_dynamic_pricing'] ?? false,
+      peakMultiplier: (json['peak_multiplier'] as num?)?.toDouble() ?? 1.5,
     );
   }
 }

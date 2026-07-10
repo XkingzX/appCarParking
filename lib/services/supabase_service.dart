@@ -235,9 +235,9 @@ class SupabaseService {
           .from('slots')
           .select('''
             *,
-            bookings!bookings_slot_id_fkey (
+            bookings (
               id, start_time, duration, status,
-              vehicles!bookings_vehicle_id_fkey (license_plate)
+              vehicles (license_plate)
             )
           ''')
           .eq('parking_lot_id', parkingLotId)
@@ -507,13 +507,13 @@ class SupabaseService {
           .from('bookings')
           .select('''
             *,
-            slots!bookings_slot_id_fkey (
+            slots (
               id,
               slot_name,
               parking_lot_id,
               parking_lots (name)
             ),
-            vehicles!bookings_vehicle_id_fkey (
+            vehicles (
               id,
               name,
               license_plate

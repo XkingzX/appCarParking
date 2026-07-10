@@ -21,8 +21,13 @@ class _ParkingFormPageState extends State<ParkingFormPage> {
   late TextEditingController _locationController;
   late TextEditingController _latController;
   late TextEditingController _lngController;
+  late TextEditingController _imagesController;
+  late TextEditingController _tagsController;
+  late TextEditingController _gracePeriodController;
+  late TextEditingController _peakMultiplierController;
   
   bool _isLoading = false;
+  bool _isDynamicPricing = false;
   ParkingLotModel? _parkingLot;
   
   List<Map<String, dynamic>> _owners = [];
@@ -35,6 +40,10 @@ class _ParkingFormPageState extends State<ParkingFormPage> {
     _locationController = TextEditingController();
     _latController = TextEditingController();
     _lngController = TextEditingController();
+    _imagesController = TextEditingController();
+    _tagsController = TextEditingController();
+    _gracePeriodController = TextEditingController(text: '15');
+    _peakMultiplierController = TextEditingController(text: '1.5');
     
     // Nhận data từ GetX Arguments nếu là Edit
     if (Get.arguments != null && Get.arguments['parkingLot'] != null) {
@@ -43,6 +52,11 @@ class _ParkingFormPageState extends State<ParkingFormPage> {
       _locationController.text = _parkingLot!.location ?? '';
       _latController.text = _parkingLot!.latitude.toString();
       _lngController.text = _parkingLot!.longitude.toString();
+      _imagesController.text = _parkingLot!.images.join(', ');
+      _tagsController.text = _parkingLot!.tags.join(', ');
+      _gracePeriodController.text = _parkingLot!.gracePeriodMinutes.toString();
+      _isDynamicPricing = _parkingLot!.isDynamicPricing;
+      _peakMultiplierController.text = _parkingLot!.peakMultiplier.toString();
       _selectedOwnerId = _parkingLot!.ownerId;
     }
 
@@ -71,6 +85,10 @@ class _ParkingFormPageState extends State<ParkingFormPage> {
     _locationController.dispose();
     _latController.dispose();
     _lngController.dispose();
+    _imagesController.dispose();
+    _tagsController.dispose();
+    _gracePeriodController.dispose();
+    _peakMultiplierController.dispose();
     super.dispose();
   }
 
@@ -86,6 +104,11 @@ class _ParkingFormPageState extends State<ParkingFormPage> {
         'location': _locationController.text.trim(),
         'latitude': double.tryParse(_latController.text.trim()) ?? 0.0,
         'longitude': double.tryParse(_lngController.text.trim()) ?? 0.0,
+        'images': _imagesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+        'tags': _tagsController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+        'grace_period_minutes': int.tryParse(_gracePeriodController.text.trim()) ?? 15,
+        'is_dynamic_pricing': _isDynamicPricing,
+        'peak_multiplier': double.tryParse(_peakMultiplierController.text.trim()) ?? 1.5,
         'owner_id': widget.role == 'admin' ? _selectedOwnerId : supabase.auth.currentUser!.id,
       };
 
@@ -134,89 +157,152 @@ class _ParkingFormPageState extends State<ParkingFormPage> {
           ),
           const SizedBox(height: 32),
           
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                )
-              ]
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Tên bãi đỗ *', border: OutlineInputBorder()),
-                    validator: (v) => v!.isEmpty ? 'Vui lòng nhập tên' : null,
-                  ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _locationController,
-                    decoration: const InputDecoration(labelText: 'Địa chỉ chi tiết', border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
+          Expanded(
+            child: SingleChildScrollView(
+              child: Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    )
+                  ]
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _latController,
-                          decoration: const InputDecoration(labelText: 'Vĩ độ (Latitude) *', border: OutlineInputBorder()),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          validator: (v) => v!.isEmpty ? 'Vui lòng nhập vĩ độ' : null,
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(labelText: 'Tên bãi đỗ *', border: OutlineInputBorder()),
+                        validator: (v) => v!.isEmpty ? 'Vui lòng nhập tên' : null,
+                      ),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _locationController,
+                        decoration: const InputDecoration(labelText: 'Địa chỉ chi tiết', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _latController,
+                              decoration: const InputDecoration(labelText: 'Vĩ độ (Latitude) *', border: OutlineInputBorder()),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              validator: (v) => v!.isEmpty ? 'Vui lòng nhập vĩ độ' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _lngController,
+                              decoration: const InputDecoration(labelText: 'Kinh độ (Longitude) *', border: OutlineInputBorder()),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              validator: (v) => v!.isEmpty ? 'Vui lòng nhập kinh độ' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      
+                      // New Customization fields
+                      TextFormField(
+                        controller: _imagesController,
+                        decoration: const InputDecoration(
+                          labelText: 'Hình ảnh (Cách nhau bằng dấu phẩy)', 
+                          hintText: 'VD: https://link.com/img1.jpg, https://link.com/img2.jpg',
+                          border: OutlineInputBorder()
                         ),
                       ),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _lngController,
-                          decoration: const InputDecoration(labelText: 'Kinh độ (Longitude) *', border: OutlineInputBorder()),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          validator: (v) => v!.isEmpty ? 'Vui lòng nhập kinh độ' : null,
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _tagsController,
+                        decoration: const InputDecoration(
+                          labelText: 'Thẻ tag (Cách nhau bằng dấu phẩy)', 
+                          hintText: 'VD: Có mái che, Rửa xe, Camera 24/7',
+                          border: OutlineInputBorder()
                         ),
                       ),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _gracePeriodController,
+                        decoration: const InputDecoration(
+                          labelText: 'Thời gian cọc chờ (phút)', 
+                          hintText: 'VD: 15',
+                          border: OutlineInputBorder()
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (v) => (int.tryParse(v ?? '') ?? 0) <= 0 ? 'Thời gian phải lớn hơn 0' : null,
+                      ),
+                      const SizedBox(height: 24),
+                      
+                      if (widget.role == 'admin') ...[
+                        DropdownButtonFormField<String>(
+                          value: _selectedOwnerId,
+                          decoration: const InputDecoration(labelText: 'Chủ bãi đỗ *', border: OutlineInputBorder()),
+                          items: _owners.map((owner) {
+                            return DropdownMenuItem<String>(
+                              value: owner['id'],
+                              child: Text('${owner['full_name'] ?? 'No Name'} (${owner['email'] ?? 'No Email'})'),
+                            );
+                          }).toList(),
+                          onChanged: (v) => setState(() => _selectedOwnerId = v),
+                          validator: (v) => v == null ? 'Vui lòng chọn chủ bãi' : null,
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                      
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      const Text('Định giá Động (Dynamic Pricing)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      SwitchListTile(
+                        title: const Text('Bật Định giá động theo giờ cao điểm'),
+                        subtitle: const Text('Giá vé sẽ tự động nhân với hệ số vào giờ cao điểm'),
+                        value: _isDynamicPricing,
+                        onChanged: (val) {
+                          setState(() {
+                            _isDynamicPricing = val;
+                          });
+                        },
+                      ),
+                      if (_isDynamicPricing) ...[
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _peakMultiplierController,
+                          decoration: const InputDecoration(
+                            labelText: 'Hệ số giờ cao điểm (VD: 1.5 = Tăng 50%)', 
+                            border: OutlineInputBorder()
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          validator: (v) => _isDynamicPricing && (double.tryParse(v ?? '') ?? 0) <= 0 ? 'Vui lòng nhập hệ số hợp lệ' : null,
+                        ),
+                      ],
+                      const SizedBox(height: 32),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _saveParkingLot,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryBlue,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: _isLoading 
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text('Lưu thông tin', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      )
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  
-                  if (widget.role == 'admin') ...[
-                    DropdownButtonFormField<String>(
-                      value: _selectedOwnerId,
-                      decoration: const InputDecoration(labelText: 'Chủ bãi đỗ *', border: OutlineInputBorder()),
-                      items: _owners.map((owner) {
-                        return DropdownMenuItem<String>(
-                          value: owner['id'],
-                          child: Text('${owner['full_name'] ?? 'No Name'} (${owner['email'] ?? 'No Email'})'),
-                        );
-                      }).toList(),
-                      onChanged: (v) => setState(() => _selectedOwnerId = v),
-                      validator: (v) => v == null ? 'Vui lòng chọn chủ bãi' : null,
-                    ),
-                    const SizedBox(height: 32),
-                  ],
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _saveParkingLot,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryBlue,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: _isLoading 
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Lưu thông tin', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  )
-                ],
+                ),
               ),
             ),
           )

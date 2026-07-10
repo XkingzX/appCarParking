@@ -136,50 +136,62 @@ class _ParkingListPageState extends State<ParkingListPage> {
           const SizedBox(height: 24),
           
           if (_isLoading)
-            const Center(child: Padding(
+            const Expanded(child: Center(child: Padding(
               padding: EdgeInsets.all(40.0),
               child: CircularProgressIndicator(color: AppTheme.primaryBlue),
-            ))
+            )))
           else if (_parkingLots.isEmpty)
-            const Center(child: Padding(
+            const Expanded(child: Center(child: Padding(
               padding: EdgeInsets.all(40.0),
               child: Text('Chưa có bãi đỗ xe nào.', style: TextStyle(color: Colors.grey, fontSize: 16)),
-            ))
+            )))
           else
-            CustomDataTable(
-              columns: const ['Tên bãi đỗ', 'Địa chỉ', 'Chủ sở hữu', 'Đánh giá', 'Hành động'],
-              rows: _parkingLots.map((parking) {
-                return [
-                  Text(parking.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text(parking.location ?? 'Chưa cập nhật', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(parking.ownerName ?? (widget.role == 'parking_owner' ? 'Bạn' : 'Không xác định')),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
-                      const SizedBox(width: 4),
-                      Text('${parking.avgRating} (${parking.totalReviews})'),
-                    ],
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit_rounded, color: AppTheme.accentBlue),
-                        tooltip: 'Sửa',
-                        onPressed: () {
-                           Get.toNamed('/web-admin/parking/form', arguments: {'parkingLot': parking});
-                        },
+            Expanded(
+              child: CustomDataTable(
+                columns: const ['Tên bãi đỗ', 'Địa chỉ', 'Chủ sở hữu', 'Đánh giá', 'Hành động'],
+                rows: _parkingLots.map((parking) {
+                  return [
+                    Text(parking.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(parking.location ?? 'Chưa cập nhật', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(parking.ownerName ?? (widget.role == 'parking_owner' ? 'Bạn' : 'Không xác định')),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                        const SizedBox(width: 4),
+                        Text('${parking.avgRating} (${parking.totalReviews})'),
+                      ],
+                    ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.grid_view_rounded, color: Colors.green),
+                            tooltip: 'Quản lý Slot',
+                            onPressed: () {
+                              Get.toNamed('/web-admin/parking/slots', arguments: {
+                                'parkingLotId': parking.id,
+                                'parkingLotName': parking.name,
+                              });
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit_rounded, color: AppTheme.accentBlue),
+                            tooltip: 'Sửa',
+                            onPressed: () {
+                               Get.toNamed('/web-admin/parking/form', arguments: {'parkingLot': parking});
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_rounded, color: Colors.redAccent),
+                            tooltip: 'Xoá',
+                            onPressed: () => _deleteParkingLot(parking.id),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_rounded, color: Colors.redAccent),
-                        tooltip: 'Xoá',
-                        onPressed: () => _deleteParkingLot(parking.id),
-                      ),
-                    ],
-                  ),
-                ];
-              }).toList(),
+                  ];
+                }).toList(),
+              ),
             )
         ],
       ),

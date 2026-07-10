@@ -7,15 +7,14 @@
 <div align="center">
   <img src="assets/images/logo.png" alt="appCarParking Logo" width="120"/>
   <h1>appCarParking</h1>
-  <p><strong>Ứng Dụng Quản Lý Bãi Đỗ Xe Hiện Đại Xây Dựng Bằng Flutter</strong></p>
+  <p><strong>Hệ Sinh Thái Quản Lý Bãi Đỗ Xe Thông Minh (Mobile & Web)</strong></p>
   
   <p>
     <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-%2302569B.svg?style=flat&logo=Flutter&logoColor=white" alt="Flutter"></a>
     <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-%230175C2.svg?style=flat&logo=dart&logoColor=white" alt="Dart"></a>
     <a href="https://firebase.google.com"><img src="https://img.shields.io/badge/Firebase-FFCA28?style=flat&logo=firebase&logoColor=white" alt="Firebase"></a>
     <a href="https://supabase.com"><img src="https://img.shields.io/badge/Supabase-3ECF8E?style=flat&logo=supabase&logoColor=white" alt="Supabase"></a>
-    <a href="#"><img src="https://img.shields.io/badge/platform-iOS%20%7C%20Android-lightgrey" alt="Platform"></a>
-    <a href="#"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+    <a href="#"><img src="https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20Web-lightgrey" alt="Platform"></a>
   </p>
 </div>
 
@@ -23,49 +22,80 @@
 
 ## 📖 Tổng Quan
 
-**appCarParking** là một ứng dụng di động toàn diện được thiết kế nhằm tối ưu hóa quy trình tìm kiếm, quản lý và điều hướng đến các vị trí đỗ xe. Được xây dựng dựa trên các tiêu chuẩn phát triển phần mềm di động hiện đại, ứng dụng mang đến một kiến trúc mạnh mẽ, tối ưu hóa hiệu năng và có khả năng mở rộng cao, sẵn sàng triển khai cho môi trường production.
+**appCarParking** là một hệ sinh thái toàn diện được thiết kế để giải quyết bài toán quản lý và tìm kiếm bãi đỗ xe. Được xây dựng bằng Flutter, dự án cung cấp ứng dụng di động cho khách hàng (Customer), nhân viên bảo vệ (Guard) và hệ thống quản trị trên nền web (Web Admin). Kiến trúc module hóa giúp hệ thống dễ dàng mở rộng, bảo trì và triển khai.
 
-## ✨ Tính Năng Nổi Bật
+## ✨ Tính Năng Hệ Thống
 
-- **🔒 Xác Thực An Toàn:** Tích hợp luồng xác thực đa nền tảng với các tiêu chuẩn bảo mật khắt khe.
-- **📍 Quản Lý Vị Trí Thời Gian Thực:** Tích hợp sâu với OpenStreetMap mã nguồn mở giúp theo dõi và quản lý các bãi đỗ xe với độ chính xác cao.
-- **⭐ Lưu & Yêu Thích:** Hỗ trợ người dùng đánh dấu và truy xuất nhanh các địa điểm đỗ xe thường xuyên sử dụng.
-- **🗺️ Điều Hướng Thông Minh:** Hỗ trợ chỉ đường chi tiết (turn-by-turn) và hướng dẫn thời gian thực đến điểm đến.
-- **🔍 Tìm Kiếm & Lọc Nâng Cao:** Tích hợp bộ máy tìm kiếm hiệu năng cao cùng các tùy chọn lọc dữ liệu linh hoạt.
-- **📱 Giao Diện Tương Thích (Responsive UI):** Giao diện người dùng mượt mà, tối ưu trên nhiều kích thước màn hình thiết bị.
-- **🌙 Chế Độ Tối (Dark Mode):** Hỗ trợ Dark Mode chuẩn mực giúp giảm mỏi mắt và tiết kiệm pin.
+Hệ thống được chia thành 3 phân hệ chính:
+
+### 1. Phân hệ Khách hàng (Customer App)
+- **📍 Bản đồ & Tìm kiếm:** Tích hợp OpenStreetMap giúp tìm kiếm bãi đỗ xe xung quanh theo thời gian thực.
+- **📅 Đặt chỗ (Booking):** Cho phép đặt trước vị trí đỗ xe, quản lý lịch sử đặt chỗ.
+- **⭐ Yêu thích:** Lưu lại các bãi đỗ xe thường xuyên sử dụng.
+- **🗺️ Điều hướng:** Hỗ trợ chỉ đường đến bãi đỗ xe đã chọn.
+
+### 2. Phân hệ Bảo vệ (Guard App)
+- **🔍 Quét mã QR:** Quét mã QR booking của khách hàng để check-in/check-out nhanh chóng.
+- **📋 Quản lý lịch sử:** Xem lịch sử xe ra vào bãi.
+- **📊 Thống kê tức thời:** Theo dõi số lượng xe đang có trong bãi.
+
+### 3. Phân hệ Quản trị (Web Admin)
+- **📈 Dashboard:** Cung cấp cái nhìn tổng quan về doanh thu, số lượng người dùng và lượt đặt chỗ.
+- **🏢 Quản lý Bãi đỗ & Chủ bãi:** Thêm, sửa, xóa thông tin bãi đỗ xe và chủ sở hữu.
+- **👥 Quản lý Người dùng & Đặt chỗ:** Quản lý danh sách khách hàng và các giao dịch đặt chỗ.
+- **💰 Quản lý Doanh thu:** Thống kê và báo cáo doanh thu chi tiết.
+- **🚗 Mô phỏng Giao thông (Simulation):** Tính năng mô phỏng luồng giao thông và hoạt động của bãi đỗ xe.
 
 ## 🛠️ Công Nghệ Sử Dụng
 
-Dự án áp dụng các công nghệ hiện đại nhằm đảm bảo hiệu năng, khả năng bảo trì và mở rộng hệ thống:
-
-*   **Frontend Framework:** Flutter (Dart)
-*   **State Management:** BLoC 
-*   **Backend & Authentication:** Firebase & Supabase
-*   **Cơ Sở Dữ Liệu Cục Bộ (Local Storage):** Postgresql Supabase
-*   **Bản Đồ & Vị Trí:** OpenStreetMap (opensource)
+*   **Frontend & Mobile:** Flutter (Dart)
+*   **State Management:** BLoC & GetX
+*   **Backend & Cơ sở dữ liệu:** Supabase (PostgreSQL), Firebase
+*   **Bản đồ:** OpenStreetMap, Flutter Map
 
 ## 📂 Kiến Trúc & Cấu Trúc Thư Mục
 
-Mã nguồn được tổ chức theo kiến trúc hướng tính năng (Feature-Driven), chia module rõ ràng nhằm tạo điều kiện bảo trì dễ dàng và phối hợp làm việc nhóm hiệu quả:
+Dự án áp dụng kiến trúc Feature-Driven, phân chia rõ ràng các module cho từng đối tượng người dùng:
 
 ```text
 lib/
- ├── core/          # Tiện ích cốt lõi, constants, theme, và các cấu hình chung
- ├── features/      # Các module chức năng (auth, maps, profile, v.v.)
- ├── services/      # Tầng giao tiếp với external APIs, backend, và local DB
- ├── widgets/       # Các UI components độc lập, có khả năng tái sử dụng cao
- ├── models/        # Định nghĩa các Data Transfer Objects (DTO) và Entities
- └── main.dart      # Điểm entry của ứng dụng
+ ├── core/              # Các cấu hình cốt lõi: Theme, constants, biến môi trường (env)
+ ├── features/          # Các chức năng chính của ứng dụng
+ │   ├── auth/          # Xử lý xác thực người dùng (Login, Register)
+ │   ├── customer/      # Phân hệ khách hàng (Account, Booking, Home, Map)
+ │   ├── guard/         # Phân hệ bảo vệ (History, Home, Scanner)
+ │   └── web_admin/     # Phân hệ quản trị web (Dashboard, Parking, Revenue, Simulation...)
+ ├── model/             # Định nghĩa cấu trúc dữ liệu (Booking, ParkingLot, User...)
+ ├── routes/            # Quản lý điều hướng (Routing)
+ ├── services/          # Tầng giao tiếp với Backend (SupabaseService)
+ └── main.dart          # Điểm khởi chạy của ứng dụng
 ```
 
 ## 📸 Ảnh Chụp Màn Hình
 
-| Trang Chủ | Bản Đồ | Chế Độ Tối | Hồ Sơ |
-|:---:|:---:|:---:|:---:|
-| <img src="https://via.placeholder.com/250x500.png?text=Trang+Chu" width="200"/> | <img src="https://via.placeholder.com/250x500.png?text=Ban+Do" width="200"/> | <img src="https://via.placeholder.com/250x500.png?text=Che+Do+Toi" width="200"/> | <img src="https://via.placeholder.com/250x500.png?text=Ho+So" width="200"/> |
+<div align="center">
+  <img src="assets/screenshots/image1.jpg" width="200"/>
+  <img src="assets/screenshots/image2.jpg" width="200"/>
+  <img src="assets/screenshots/image3.jpg" width="200"/>
+  <img src="assets/screenshots/image4.jpg" width="200"/>
+  <img src="assets/screenshots/image6.png" width="200"/>
+  <img src="assets/screenshots/image7.png" width="200"/>
+  <img src="assets/screenshots/image8.png" width="200"/>
+  <img src="assets/screenshots/image9.png" width="200"/>
+  <img src="assets/screenshots/image10.png" width="200"/>
+  <img src="assets/screenshots/image11.png" width="200"/>
+  <img src="assets/screenshots/image12.png" width="200"/>
+  <img src="assets/screenshots/image13.png" width="200"/>
+  <img src="assets/screenshots/image14.png" width="200"/>
+</div>
 
-*(Lưu ý: Thay thế các placeholder bằng ảnh thực tế của ứng dụng)*
+## 🎥 Video Demo
+
+<div align="center">
+  <a href="https://youtu.be/a_uk1ptQd1U">
+    <img src="https://img.youtube.com/vi/a_uk1ptQd1U/maxresdefault.jpg" alt="Video Demo" width="600"/>
+  </a>
+</div>
 
 ## 🚀 Hướng Dẫn Cài Đặt
 
@@ -74,9 +104,8 @@ Thực hiện các bước sau để thiết lập môi trường phát triển 
 ### Yêu Cầu Hệ Thống
 
 *   [Flutter SDK](https://docs.flutter.dev/get-started/install) (phiên bản stable mới nhất)
-*   Android Studio / Xcode
-*   Cấu hình Firebase CLI & Supabase
-*   Google Maps API Keys (Cho Android & iOS)
+*   Android Studio / Xcode / VS Code
+*   Cấu hình Supabase & Firebase CLI
 
 ### Các Bước Cài Đặt
 
@@ -92,29 +121,30 @@ Thực hiện các bước sau để thiết lập môi trường phát triển 
     ```
 
 3.  **Thiết Lập Môi Trường**
-    *   Tạo file `.env` tại thư mục gốc.
-    *   Cấu hình file `google-services.json` (Android) và `GoogleService-Info.plist` (iOS) cho Firebase.
-    *   Bổ sung Google Maps API keys vào file manifest/plist tương ứng.
+    *   Tạo file `.env` tại thư mục gốc và cấu hình các key của Supabase.
+    *   (Nếu dùng Firebase) Cấu hình file `google-services.json` (Android) và `GoogleService-Info.plist` (iOS) cho Firebase.
 
 4.  **Khởi chạy ứng dụng**
-    ```bash
-    flutter run
-    ```
+    *   Cho Mobile (Android/iOS):
+        ```bash
+        flutter run
+        ```
+    *   Cho Web Admin:
+        ```bash
+        flutter run -d chrome
+        ```
 
 ## 🔮 Cải Tiến Trong Tương Lai
 
 - [ ] Tích hợp AI để dự đoán tỷ lệ trống của bãi đỗ xe.
-- [ ] Triển khai cổng thanh toán tự động (Stripe/PayPal/VNPay).
-- [ ] Bổ sung tính năng tìm kiếm trạm sạc xe điện (EV).
+- [ ] Triển khai cổng thanh toán trực tuyến (Stripe/PayPal/VNPay).
+- [ ] Tích hợp tính năng nhận diện biển số thông minh (ALPR) qua Camera.
+- [ ] Tích hợp hệ thống phần cứng IoT (Cảm biến nhận diện xe, thanh chắn Barrier tự động, v.v.).
 - [ ] Mở rộng đa ngôn ngữ (Localization) cho nhiều quốc gia khác.
 
 ## 🤝 Đóng Góp Ý Kiến
 
 Mọi đóng góp, báo cáo lỗi (issues), và đề xuất tính năng đều được chào đón. Vui lòng tham khảo [issues page](https://github.com/XkingzX/appCarParking/issues) trước khi tiến hành đóng góp.
-
-## 📝 Giấy Phép (License)
-
-Dự án được phân phối dưới giấy phép MIT. Xem `LICENSE` để biết thêm chi tiết.
 
 ## 👤 Tác Giả: **Ngô Tiến Tới**
 

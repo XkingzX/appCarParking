@@ -78,6 +78,15 @@ class _GuardHomePageState extends State<GuardHomePage> {
         centerTitle: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.history_edu),
+            tooltip: 'Lịch sử Đặt chỗ',
+            onPressed: () {
+              if (_parkingLotId != null) {
+                Get.toNamed('/guard/booking-history', arguments: {'parkingLotId': _parkingLotId});
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
               setState(() => _isLoading = true);

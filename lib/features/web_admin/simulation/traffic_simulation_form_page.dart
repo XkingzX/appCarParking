@@ -128,146 +128,150 @@ class _TrafficSimulationFormPageState extends State<TrafficSimulationFormPage> {
           ),
           const SizedBox(height: 32),
           
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                )
-              ]
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Tên tuyến đường *', border: OutlineInputBorder()),
-                    validator: (v) => v!.isEmpty ? 'Vui lòng nhập tên' : null,
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Tọa độ
-                  const Text('Tọa độ điểm đầu', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Row(
+          Expanded(
+            child: SingleChildScrollView(
+              child: Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    )
+                  ]
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _startLatController,
-                          decoration: const InputDecoration(labelText: 'Vĩ độ (Lat) *', border: OutlineInputBorder()),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          validator: (v) => v!.isEmpty ? 'Bắt buộc' : null,
-                        ),
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(labelText: 'Tên tuyến đường *', border: OutlineInputBorder()),
+                        validator: (v) => v!.isEmpty ? 'Vui lòng nhập tên' : null,
                       ),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _startLngController,
-                          decoration: const InputDecoration(labelText: 'Kinh độ (Lng) *', border: OutlineInputBorder()),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          validator: (v) => v!.isEmpty ? 'Bắt buộc' : null,
-                        ),
+                      const SizedBox(height: 24),
+                      
+                      // Tọa độ
+                      const Text('Tọa độ điểm đầu', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _startLatController,
+                              decoration: const InputDecoration(labelText: 'Vĩ độ (Lat) *', border: OutlineInputBorder()),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              validator: (v) => v!.isEmpty ? 'Bắt buộc' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _startLngController,
+                              decoration: const InputDecoration(labelText: 'Kinh độ (Lng) *', border: OutlineInputBorder()),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              validator: (v) => v!.isEmpty ? 'Bắt buộc' : null,
+                            ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 24),
+
+                      const Text('Tọa độ điểm cuối', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _endLatController,
+                              decoration: const InputDecoration(labelText: 'Vĩ độ (Lat) *', border: OutlineInputBorder()),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              validator: (v) => v!.isEmpty ? 'Bắt buộc' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _endLngController,
+                              decoration: const InputDecoration(labelText: 'Kinh độ (Lng) *', border: OutlineInputBorder()),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              validator: (v) => v!.isEmpty ? 'Bắt buộc' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Sliders
+                      const Text('Thông số Giao thông (Realtime Simulation)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      const SizedBox(height: 16),
+                      
+                      Text('Tốc độ trung bình: ${_speedKmh.toInt()} km/h'),
+                      Slider(
+                        value: _speedKmh,
+                        min: 0,
+                        max: 120,
+                        divisions: 120,
+                        label: '${_speedKmh.toInt()} km/h',
+                        activeColor: _speedKmh < 20 ? Colors.red : (_speedKmh < 40 ? Colors.orange : Colors.green),
+                        onChanged: (v) => setState(() => _speedKmh = v),
+                      ),
+                      const SizedBox(height: 16),
+
+                      Text('Lưu lượng: ${_volumePerHour.toInt()} xe/giờ'),
+                      Slider(
+                        value: _volumePerHour,
+                        min: 0,
+                        max: 5000,
+                        divisions: 100,
+                        label: '${_volumePerHour.toInt()} xe/giờ',
+                        activeColor: AppTheme.primaryBlue,
+                        onChanged: (v) => setState(() => _volumePerHour = v),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Status Dropdown
+                      DropdownButtonFormField<String>(
+                        value: _status,
+                        decoration: const InputDecoration(labelText: 'Trạng thái đường', border: OutlineInputBorder()),
+                        items: const [
+                          DropdownMenuItem(value: 'clear', child: Text('Thông thoáng (Xanh)', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
+                          DropdownMenuItem(value: 'moderate', child: Text('Đông đúc (Vàng)', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold))),
+                          DropdownMenuItem(value: 'heavy', child: Text('Kẹt xe mạnh (Đỏ)', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+                          DropdownMenuItem(value: 'jam', child: Text('Tắc đường (Tím)', style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold))),
+                        ],
+                        onChanged: (v) => setState(() => _status = v!),
+                      ),
+                      const SizedBox(height: 24),
+
+                      TextFormField(
+                        controller: _peakHoursController,
+                        decoration: const InputDecoration(labelText: 'Giờ cao điểm (vd: 07:00-09:00)', border: OutlineInputBorder()),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _saveSimulation,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryBlue,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: _isLoading 
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text('Lưu Mô Phỏng', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      )
                     ],
                   ),
-                  const SizedBox(height: 24),
-
-                  const Text('Tọa độ điểm cuối', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _endLatController,
-                          decoration: const InputDecoration(labelText: 'Vĩ độ (Lat) *', border: OutlineInputBorder()),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          validator: (v) => v!.isEmpty ? 'Bắt buộc' : null,
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _endLngController,
-                          decoration: const InputDecoration(labelText: 'Kinh độ (Lng) *', border: OutlineInputBorder()),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          validator: (v) => v!.isEmpty ? 'Bắt buộc' : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Sliders
-                  const Text('Thông số Giao thông (Realtime Simulation)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  const SizedBox(height: 16),
-                  
-                  Text('Tốc độ trung bình: ${_speedKmh.toInt()} km/h'),
-                  Slider(
-                    value: _speedKmh,
-                    min: 0,
-                    max: 120,
-                    divisions: 120,
-                    label: '${_speedKmh.toInt()} km/h',
-                    activeColor: _speedKmh < 20 ? Colors.red : (_speedKmh < 40 ? Colors.orange : Colors.green),
-                    onChanged: (v) => setState(() => _speedKmh = v),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Text('Lưu lượng: ${_volumePerHour.toInt()} xe/giờ'),
-                  Slider(
-                    value: _volumePerHour,
-                    min: 0,
-                    max: 5000,
-                    divisions: 100,
-                    label: '${_volumePerHour.toInt()} xe/giờ',
-                    activeColor: AppTheme.primaryBlue,
-                    onChanged: (v) => setState(() => _volumePerHour = v),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Status Dropdown
-                  DropdownButtonFormField<String>(
-                    value: _status,
-                    decoration: const InputDecoration(labelText: 'Trạng thái đường', border: OutlineInputBorder()),
-                    items: const [
-                      DropdownMenuItem(value: 'clear', child: Text('Thông thoáng (Xanh)', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
-                      DropdownMenuItem(value: 'moderate', child: Text('Đông đúc (Vàng)', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold))),
-                      DropdownMenuItem(value: 'heavy', child: Text('Ùn ứ (Đỏ)', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
-                      DropdownMenuItem(value: 'jam', child: Text('Tắc đường (Tím)', style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold))),
-                    ],
-                    onChanged: (v) => setState(() => _status = v!),
-                  ),
-                  const SizedBox(height: 24),
-
-                  TextFormField(
-                    controller: _peakHoursController,
-                    decoration: const InputDecoration(labelText: 'Giờ cao điểm (vd: 07:00-09:00)', border: OutlineInputBorder()),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _saveSimulation,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryBlue,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: _isLoading 
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Lưu Mô Phỏng', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  )
-                ],
+                ),
               ),
             ),
           )

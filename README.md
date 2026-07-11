@@ -111,7 +111,7 @@ Thực hiện các bước sau để thiết lập môi trường phát triển 
 
 1.  **Clone mã nguồn**
     ```bash
-    git clone https://github.com/yourusername/appCarParking.git
+    git clone https://github.com/XkingzX/appCarParking.git
     cd appCarParking
     ```
 
